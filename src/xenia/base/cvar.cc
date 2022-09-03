@@ -22,6 +22,7 @@ namespace utfcpp = utf8;
 
 using u8_citer = utfcpp::iterator<std::string_view::const_iterator>;
 
+namespace xe {
 namespace cvar {
 
 cxxopts::Options options("xenia", "Xbox 360 Emulator");
@@ -219,3 +220,4 @@ std::string EscapeString(const std::string_view view) {
 }  // namespace toml
 
 }  // namespace cvar
+}  // namespace xe
