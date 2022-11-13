@@ -1,0 +1,17 @@
+QGroupBox {
+  background-color: $secondary;
+  border: transparent;
+  border-radius: 2px;
+  /* leave space at the top for the title */
+  margin: 24px 4px 4px 4px;
+  color: $primary;
+  font-family: "Segoe UI Semibold";
+  font-size: 14px;
+}
+
+QGroupBox::title {
+  subcontrol-origin: margin;
+  /* position at the top left */
+  subcontrol-position: top left;
+  background: transparent;
+}

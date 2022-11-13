@@ -6,6 +6,9 @@ project("xenia-app")
   uuid("d7e98620-d007-4ad8-9dbd-b47c8853a17f")
   language("C++")
   links({
+    "xenia-app-discord",
+    "xenia-app-library",
+    "xenia-app-settings",
     "xenia-apu",
     "xenia-apu-nop",
     "xenia-base",

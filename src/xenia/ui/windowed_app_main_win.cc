@@ -43,7 +43,7 @@ int WINAPI wWinMain(HINSTANCE hinstance, HINSTANCE hinstance_prev,
     // TODO(Triang3l): Rework this, need to initialize the console properly,
     // disable has_console_attached_ by default in windowed apps, and attach
     // only if needed.
-    if (cvars::enable_console) {
+    if (xe::cvars::enable_console) {
       xe::AttachConsole();
     }
 

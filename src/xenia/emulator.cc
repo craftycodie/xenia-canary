@@ -785,7 +785,7 @@ X_STATUS Emulator::CompleteLaunch(const std::filesystem::path& path,
 
     // Load the per-game configuration file and make sure updates are handled by
     // the callbacks.
-    config::LoadGameConfig(title_id);
+    Config::Instance().LoadGameConfig(title_id);
     assert_true(game_config_load_callback_loop_next_index_ == SIZE_MAX);
     game_config_load_callback_loop_next_index_ = 0;
     while (game_config_load_callback_loop_next_index_ <

@@ -508,6 +508,11 @@ struct xex2_opt_import_libraries {
   } string_table;
 };
 
+struct xex2_multi_disc_media_id_t {
+  char hash[12];
+  uint32_t media_id;
+};
+
 struct xex2_import_library {
   xe::be<uint32_t> size;               // 0x0
   char next_import_digest[0x14];       // 0x4

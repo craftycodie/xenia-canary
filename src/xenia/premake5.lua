@@ -11,5 +11,6 @@ project("xenia-core")
     "xenia-base",
   })
   defines({
+    "QT_ENABLED"
   })
   files({"*.h", "*.cc"})
