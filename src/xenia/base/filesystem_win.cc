@@ -40,8 +40,8 @@ std::filesystem::path to_path(const std::u16string_view source) {
 namespace filesystem {
 
 std::filesystem::path GetExecutablePath() {
-  wchar_t* path;
-  auto error = _get_wpgmptr(&path);
+  wchar_t path[MAX_PATH + 1];
+  auto error = GetModuleFileNameW(nullptr, path, sizeof(path));
   return !error ? std::filesystem::path(path) : std::filesystem::path();
 }
 

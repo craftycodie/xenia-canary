@@ -9,6 +9,8 @@ project("xenia-app")
   language("C++")
   links({
     "xenia-app-discord",
+    "xenia-app-library",
+    "xenia-app-settings",
     "xenia-apu",
     "xenia-apu-nop",
     "xenia-apu-sdl",

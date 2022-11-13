@@ -322,7 +322,7 @@ bool EmulatorApp::OnInitialize() {
   storage_root = std::filesystem::absolute(storage_root);
   XELOGI("Storage root: {}", xe::path_to_utf8(storage_root));
 
-  config::SetupConfig(storage_root);
+  Config::Instance().SetupConfig(storage_root);
 
   std::filesystem::path content_root = cvars::content_root;
   if (content_root.empty()) {
@@ -388,7 +388,7 @@ void EmulatorApp::OnDestroy() {
   Profiler::Shutdown();
 
   // Write all cvar overrides to the config.
-  config::SaveConfig();
+  Config::Instance().SaveConfig();
 
   // TODO(DrChat): Remove this code and do a proper exit.
   XELOGI("Cheap-skate exit!");
