@@ -150,7 +150,6 @@ bool QtDemoApp::OnInitialize() {
   window_->move(qApp->primaryScreen()->geometry().center() -
                  window_->rect().center());
 
-  window_->show();
   return true;
 }
 
