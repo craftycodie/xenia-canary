@@ -23,12 +23,11 @@ QVariant GameLibraryModel::data(const QModelIndex& index, int role) const {
   switch (column) {
     case GameColumn::kIconColumn:
       if (role == Qt::DisplayRole) {
+        const auto& icon_data = entry.icon_data();
         QImage image;
-        QByteArray image_data(
-            reinterpret_cast<const char*>(entry.icon_data().data()),
-            static_cast<int>(entry.icon_size()));
 
-        image.loadFromData(image_data);
+        image.loadFromData(icon_data.data(),
+                           static_cast<int>(icon_data.size()));
         return image;
       }
       break;

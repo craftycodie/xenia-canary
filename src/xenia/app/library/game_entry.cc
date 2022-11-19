@@ -85,20 +85,19 @@ bool GameEntry::apply_info(const GameInfo& info) {
   }
 
  
-  void* icon_data = nullptr;
+  uint8_t* icon_data = nullptr;
   size_t icon_size = 0;
   // TODO: prefer nxe icon over xex icon?
   if (xex_info.icon) {
-    icon_data = xex_info.icon;
+      icon_data = xex_info.icon;
     icon_size = xex_info.icon_size;
   } else if (nxe_info.icon) {
     icon_data = nxe_info.icon;
     icon_size = nxe_info.icon_size;
   }
-  icon_size_ = icon_size;
-  icon_data_.reserve(icon_size_);
 
-  memcpy(&icon_data_[0], icon_data, icon_size_);
+  icon_data_ = IconData(icon_size);
+  std::copy_n(icon_data, icon_size, icon_data_.begin());
 
   return true;
 }
