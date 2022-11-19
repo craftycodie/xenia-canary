@@ -29,8 +29,7 @@ enum class GameRatingRegulator : uint8_t {
 
 class GameEntry {
  public:
-
-  using IconData = std::vector<std::byte>;
+  using IconData = std::vector<uint8_t>;
   using GameRatingMap = std::map<GameRatingRegulator, uint32_t>; //key: regulator, value: rating
 
   static std::optional<GameEntry> FromGameInfo(const GameInfo& info);
@@ -54,7 +53,6 @@ class GameEntry {
 
   const std::string& title() const { return title_; }
   const IconData& icon_data() const { return icon_data_; }
-  const size_t icon_size() const { return icon_size_; }
   const uint32_t title_id() const { return title_id_; }
   const uint32_t media_id() const { return media_id_; }
   const std::vector<uint32_t>& alt_title_ids() const { return alt_title_ids_; }
@@ -80,7 +78,6 @@ class GameEntry {
   // Game Metadata
   std::string title_;
   IconData icon_data_;
-  size_t icon_size_ = 0;
   uint32_t title_id_ = 0;
   uint32_t media_id_ = 0;
   std::vector<uint32_t> alt_title_ids_;
