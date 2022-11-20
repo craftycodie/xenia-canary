@@ -8,8 +8,8 @@
  */
 
 #include "settings_set.h"
-#include "settings_item.h"
 #include <algorithm>
+#include "settings_item.h"
 
 namespace xe {
 namespace app {
@@ -22,11 +22,13 @@ void SettingsGroup::AddSettingsItem(SettingsItemPtr&& item) {
 }
 
 std::vector<ISettingsItem*> SettingsGroup::items() const {
-  std::vector<ISettingsItem*> items(items_.size());
+  std::vector<ISettingsItem*> items;
+  items.reserve(items_.size());
 
   // copy items from map to new vector
-  std::transform(items_.begin(), items_.end(), std::back_inserter(items),
-                 [](auto& kv) { return kv.second.get(); });
+  for (const auto& [k, v] : items_) {
+      items.push_back(v.get());
+  }
 
   return items;
 }
@@ -53,11 +55,12 @@ std::vector<ISettingsItem*> SettingsSet::GetSettingsItems() const {
   return items;
 }
 std::vector<SettingsGroup*> SettingsSet::GetSettingsGroups() const {
-  std::vector<SettingsGroup*> groups(groups_.size());
-
+  std::vector<SettingsGroup*> groups;
+  groups.reserve(groups_.size());
   // copy items from map to new vector
-  std::transform(groups_.begin(), groups_.end(), std::back_inserter(groups),
-                 [](const auto& kv) { return kv.second.get(); });
+  for (const auto& [k, v] : groups_) {
+    groups.push_back(v.get());
+  }
 
   return groups;
 }
