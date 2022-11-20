@@ -26,11 +26,14 @@ Settings& Settings::Instance() {
   if (!settings) {
     settings = new Settings();
     settings->Init();
+    settings->LoadSettingsItems();
   }
   return *settings;
 }
 
-void Settings::LoadSettingsItems() {}
+void Settings::LoadSettingsItems() {
+    settings_["General"]->LoadSettings(); // TODO: move away from map
+}
 
 void Settings::Init() {
   settings_["General"] = std::make_unique<GeneralSet>("General");
