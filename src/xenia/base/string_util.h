@@ -39,6 +39,26 @@ enum class Safety {
   IKnowWhatIAmDoing,
 };
 
+inline bool starts_with(std::string string, std::string searched_phrase,
+                        bool case_sensitive = false) {
+  if (searched_phrase.size() > string.size()) {
+    return false;
+  }
+
+  for (uint32_t char_index = 0; char_index < searched_phrase.size();
+       char_index++) {
+    char str_char =
+        case_sensitive ? string[char_index] : tolower(string[char_index]);
+    char cmp_char = case_sensitive ? searched_phrase[char_index]
+                                   : tolower(searched_phrase[char_index]);
+
+    if (str_char != cmp_char) {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline size_t copy_truncating(char* dest, const std::string_view source,
                               size_t dest_buffer_count) {
   if (!dest_buffer_count) {
