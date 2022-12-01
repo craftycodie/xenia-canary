@@ -111,29 +111,29 @@ int GameScanner::ScanPathAsync(const std::filesystem::path& path,
   return ScanPathsAsync(paths, cb);
 }
 
-int GameScanner::ScanPathsAsync(
-    const std::vector<std::filesystem::path>& paths, const AsyncCallback& cb) {
+int GameScanner::ScanPathsAsync(const std::vector<std::filesystem::path>& paths,
+                                const AsyncCallback& cb) {
   // start scanning in a new thread
   // TODO: switch to xe::threading::Thread instead of std::thread?
   std::thread scan_thread = std::thread(
       [](std::vector<std::filesystem::path> paths, AsyncCallback cb) {
         std::atomic<int> scanned = 0;
 
-        auto scan_func = [&](
-            const std::vector<std::filesystem::path>& target_paths,
-            size_t start, size_t size) {
-          for (auto it = target_paths.begin() + start;
-               it != target_paths.begin() + start + size; ++it) {
-            scanned++;
-            GameEntry game_info;
-            auto status = ScanGame(*it, &game_info);
-            if (cb && XSUCCEEDED(status)) {
-              cb(game_info, scanned);
-            } else {
-              // XELOGE("Failed to scan game at {}", it);
-            }
-          }
-        };
+        auto scan_func =
+            [&](const std::vector<std::filesystem::path>& target_paths,
+                size_t start, size_t size) {
+              for (auto it = target_paths.begin() + start;
+                   it != target_paths.begin() + start + size; ++it) {
+                scanned++;
+                GameEntry game_info;
+                auto status = ScanGame(*it, &game_info);
+                if (cb && XSUCCEEDED(status)) {
+                  cb(game_info, scanned);
+                } else {
+                  // XELOGE("Failed to scan game at {}", it);
+                }
+              }
+            };
 
         uint32_t thread_count = xe::threading::logical_processor_count();
 
@@ -151,8 +151,7 @@ int GameScanner::ScanPathsAsync(
           if (work_size > 0) {
             for (uint32_t i = 0; i < thread_count; i++) {
               threads.emplace_back(
-                  std::thread(scan_func, paths, i * work_size, work_size)
-              );
+                  std::thread(scan_func, paths, i * work_size, work_size));
             }
           }
           scan_func(paths, total_size - leftover, leftover);
@@ -263,6 +262,6 @@ X_STATUS GameScanner::ScanGame(const std::filesystem::path& path,
   return X_STATUS_SUCCESS;
 }
 
-} // namespace library
-} // namespace app
-} // namespace xe
+}  // namespace library
+}  // namespace app
+}  // namespace xe
