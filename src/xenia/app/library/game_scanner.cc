@@ -34,7 +34,9 @@ std::vector<std::filesystem::path> GameScanner::FindGamesInPath(
       std::vector<FileInfo> directory_files =
           filesystem::ListFiles(current_path);
       for (FileInfo file : directory_files) {
-        if (CompareCaseInsensitive(file.name, L"$SystemUpdate")) continue;
+        if (CompareCaseInsensitive(file.name, L"$SystemUpdate")) {
+          continue;
+        }
 
         auto next_path = current_path / file.name;
         // Skip searching directories with an extracted default.xex file
@@ -52,11 +54,16 @@ std::vector<std::filesystem::path> GameScanner::FindGamesInPath(
       }
 
       // Do not attempt to scan SVOD data files
-      auto filename = GetFileName(current_path);
-      if (filename == "Data") continue;
-
+      if (extension.empty()) {
+        auto filename = GetFileName(current_path);
+        if (xe::string_util::starts_with(filename.string(), "Data")) {
+          continue;
+        }
+      }
       // Skip empty files
-      if (current_file.total_size == 0) continue;
+      if (current_file.total_size == 0) {
+        continue;
+      }
 
       paths.push_back(current_path);
       game_count++;
