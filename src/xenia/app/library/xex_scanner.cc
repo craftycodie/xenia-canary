@@ -485,20 +485,21 @@ X_STATUS ReadXexResources(File* file, XexInfo* info) {
     return X_STATUS_SUCCESS;
   }
 
-  XELOGI("Reading %d XEX resources.", info->resources_count);
+  XELOGI("Reading {} XEX resources.", info->resources_count);
 
   for (size_t i = 0; i < info->resources_count; i++) {
     auto resource = &resources[i];
 
-    uint32_t title_id = info->execution_info.title_id;
-    uint32_t name = xe::string_util::from_string<uint32_t>(
-        std::string(reinterpret_cast<char*>(resource->name), 8), true);
-    XELOGI("Found resource: %X", name);
+    std::string title_id =
+        xe::string_util::to_hex_string(info->execution_info.title_id);
+    std::string resource_name =
+        std::string(reinterpret_cast<char*>(resource->name), 8);
+    XELOGI("Found resource: {}", resource_name);
 
     // Game resources are listed as the TitleID
-    if (name == title_id) {
+    if (resource_name == title_id) {
       uint32_t offset = resource->address - info->base_address;
-      XELOGI("Found XBDF resource at %08x with size %08x", offset,
+      XELOGI("Found XBDF resource at {:08X} with size {:08X}", offset,
              resource->size);
 
       uint8_t* data;
