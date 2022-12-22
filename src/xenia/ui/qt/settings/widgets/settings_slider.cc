@@ -16,7 +16,7 @@ namespace qt {
 using namespace xe::app::settings;
 using namespace xe::cvar;
 
-SettingsSlider::SettingsSlider(NumberRangeSettingsItem& item)
+SettingsSlider::SettingsSlider(SliderSettingsItem& item)
     : XSlider(), item_(item) {
   assert_true(Initialize(), "Could not initialize SettingsSlider");
 }
@@ -25,17 +25,10 @@ bool SettingsSlider::Initialize() {
   this->setMinimum(item_.min());
   this->setMaximum(item_.max());
 
-  if (int current_value; item_.GetValue().as<int>(current_value)) {
-    setValue(current_value);
-  } else {
-    XELOGE("Could not load current value for settings item \"{}\"",
-           item_.title());
-    return false;
-  }
+  setValue(item_.value());
 
-  XSlider::connect(this, &XSlider::valueChanged, [&](int value) {
-    // TODO: handle SetValue returning false for value out of range
-    item_.SetValue(value);
+  connect(this, &XSlider::valueChanged, [&](int value) {
+    item_.set_value(value);
   });
 
   return true;

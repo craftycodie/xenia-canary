@@ -25,13 +25,12 @@ class SettingsSlider : public XSlider {
   Q_OBJECT;
 
  public:
-  explicit SettingsSlider(NumberRangeSettingsItem& item);
+  explicit SettingsSlider(SliderSettingsItem& item);
 
   bool Initialize();
 
 private:
-  NumberRangeSettingsItem& item_;
-  std::atomic_bool is_value_updating_ = false;
+  SliderSettingsItem& item_;
 };
 
 }  // namespace qt

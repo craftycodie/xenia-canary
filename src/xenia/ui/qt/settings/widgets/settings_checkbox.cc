@@ -25,23 +25,17 @@ SettingsCheckBox::~SettingsCheckBox() {  }
 
 bool SettingsCheckBox::Initialize() {
 
-    if (bool value; item_.GetValue().as<bool>(value)) {
-        setCheckState(value ? Qt::Checked : Qt::Unchecked);
-    } else {
-        XELOGE("Failed to parse settings item \"{}\" as bool", item_.title());
-    }
+  setCheckState(item_.value() ? Qt::Checked : Qt::Unchecked);
 
-  // update cvar when checkbox state changes
-  XCheckBox::connect(this, &XCheckBox::stateChanged, [&](int state) {
-    is_value_updating_ = true;
+  // update settings item when checkbox state changes
+  connect(this, &XCheckBox::stateChanged, [&](int state) {
     if (state == Qt::Checked) {
-      item_.SetValue(true);
+      item_.set_value(true);
     } else if (state == Qt::Unchecked) {
-      item_.SetValue(false);
+      item_.set_value(false);
     } else {
-      XELOGW("PartiallyChecked state not supported for SettingsCheckBox");
+      assert_always("PartiallyChecked state not supported for SettingsCheckBox");
     }
-    is_value_updating_ = false;
   });
 
   return true;

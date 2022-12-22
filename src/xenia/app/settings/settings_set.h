@@ -19,7 +19,7 @@ namespace app {
 namespace settings {
 class SettingsValue;
 
-using SettingsItemPtr = std::unique_ptr<struct ISettingsItem>;
+using SettingsItemPtr = std::unique_ptr<class ISettingsItem>;
 using SettingsGroupPtr = std::unique_ptr<class SettingsGroup>;
 
 class SettingsGroup {

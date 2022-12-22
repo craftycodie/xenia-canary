@@ -24,9 +24,7 @@ using namespace xe::cvar;
 class SettingsLineEdit : public XLineEdit {
   Q_OBJECT;
 
-  enum class Type { Text, Path };
-
- public:
+public:
   explicit SettingsLineEdit(TextInputSettingsItem& item);
   explicit SettingsLineEdit(PathInputSettingsItem& item);
 
@@ -35,7 +33,6 @@ class SettingsLineEdit : public XLineEdit {
 private:
   ISettingsItem& item_;
   std::atomic_bool is_value_updating_ = false;
-  Type type_;
 };
 
 }  // namespace qt
