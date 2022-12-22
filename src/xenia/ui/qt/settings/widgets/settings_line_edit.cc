@@ -19,12 +19,12 @@ using namespace xe::cvar;
 const int kLineEditMaxWidth = 480;
 
 SettingsLineEdit::SettingsLineEdit(TextInputSettingsItem& item)
-    : XLineEdit(), item_(item), type_(Type::Text) {
+    : XLineEdit(), item_(item) {
   assert_true(Initialize(), "Could not initialize SettingsLineEdit");
 }
 
 SettingsLineEdit::SettingsLineEdit(PathInputSettingsItem& item)
-    : XLineEdit(), item_(item), type_(Type::Path) {
+    : XLineEdit(), item_(item) {
   assert_true(Initialize(), "Could not initialize SettingsLineEdit");
 }
 
@@ -34,38 +34,37 @@ bool SettingsLineEdit::Initialize() {
   this->setPlaceholderText(item_.description().c_str());
   this->setMaximumWidth(kLineEditMaxWidth);
 
-  if (type_ == Type::Path) {
-    auto item = static_cast<PathInputSettingsItem*>(&item_);
+  // setup the current value, and textChanged callback
+  // based on if we are implementing a path-input text box or not
+  if (item_.settings_type() == SettingsType::PathInput) {
+    auto item = dynamic_cast<PathInputSettingsItem*>(&item_);
     if (!item) return false;
 
-    fs::path current_path;
-    if (item->GetValue().as<fs::path>(current_path)) {
-      std::string current_path_str = std::string(current_path.u8string());
-      this->setText(QString(current_path_str.c_str()));
+    fs::path current_path = item->value();
 
-      XLineEdit::connect(this, &XLineEdit::textChanged,
-                         [=](const QString& text) {
-                           auto path = std::string(text.toUtf8());
-                           item->SetValue(path);
-                         });
+    std::string current_path_str = std::string(current_path.u8string());
+    this->setText(QString(current_path_str.c_str()));
 
-      return true;
-    }
-  } else if (type_ == Type::Text) {
+    connect(this, &XLineEdit::textChanged, [item](const QString& text) {
+      auto path = std::string(text.toUtf8());
+      item->set_value(path);
+    });
+
+    return true;
+
+  } else if (item_.settings_type() == SettingsType::TextInput) {
     auto item = dynamic_cast<TextInputSettingsItem*>(&item_);
     if (!item) return false;
 
-    std::string current_text_str;
-    if (item->GetValue().as<std::string>(current_text_str)) {
-      this->setText(QString(current_text_str.c_str()));
+    std::string current_text_str = item->value();
 
-      XLineEdit::connect(this, &XLineEdit::textChanged,
-                         [=](const QString& text) {
-                           item->SetValue(std::string(text.toUtf8()));
-                         });
+    this->setText(QString(current_text_str.c_str()));
 
-      return true;
-    }
+    connect(this, &XLineEdit::textChanged, [item](const QString& text) {
+      item->set_value(std::string(text.toUtf8()));
+    });
+
+    return true;
   }
 
   return false;

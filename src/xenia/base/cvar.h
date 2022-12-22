@@ -93,6 +93,7 @@ class ConfigVar : public CommandVar<T>, virtual public IConfigVar {
   // one that will be stored when the global config is written next time. After
   // overriding, however, the next game config loaded may still change it.
   void OverrideConfigValue(T val);
+  void ResetConfigValueToDefault() override;
 
  private:
   std::string category_;
@@ -101,7 +102,6 @@ class ConfigVar : public CommandVar<T>, virtual public IConfigVar {
   std::unique_ptr<T> config_value_ = nullptr;
   std::unique_ptr<T> game_config_value_ = nullptr;
   void UpdateValue() override;
-  void ResetConfigValueToDefault() override;
 };
 
 #pragma warning(pop)
@@ -297,6 +297,7 @@ inline void AddConfigVar(IConfigVar* cv) {
   }
   ConfigVars->emplace(cv->name(), cv);
 }
+
 inline void AddCommandVar(ICommandVar* cv) {
   if (!CmdVars) {
     CmdVars = new std::map<std::string, ICommandVar*>;

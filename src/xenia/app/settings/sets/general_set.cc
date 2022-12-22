@@ -8,7 +8,9 @@
  */
 
 #include "general_set.h"
+
 #include "xenia/app/settings/settings_builder.h"
+#include "xenia/config.h"
 
 #include "xenia/app/settings/settings_item.h"
 
@@ -17,15 +19,19 @@ namespace app {
 namespace settings {
 
 void GeneralSet::LoadSettings() {
-    auto test_switch = std::make_unique<SwitchSettingsItem>(
-        "test", "Test Switch", "A test switch", false, false);
+  cvar::IConfigVar* discord_cvar =
+      Config::Instance().FindConfigVarByName("discord");
 
-  AddSettingsItem("General Settings", std::move(test_switch));
+  if (auto d2 = dynamic_cast<cvar::ConfigVar<bool>*>(discord_cvar)) {
+    auto test_switch = std::make_unique<SwitchSettingsItem>(
+        "test", "Test Switch", "A test switch", CvarValueStore(*d2));
+
+    AddSettingsItem("General Settings", std::move(test_switch));
+  }
 }
 
 void GeneralSet::OnSettingChanged(std::string_view key,
-                                  const SettingsValue& value) {
-}
+                                  const SettingsValue& value) {}
 
 }  // namespace settings
 }  // namespace app

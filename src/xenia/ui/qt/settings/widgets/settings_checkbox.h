@@ -33,7 +33,6 @@ public:
 
 private:
   SwitchSettingsItem& item_;
-  std::atomic_bool is_value_updating_ = false;
 };
 
 }  // namespace qt

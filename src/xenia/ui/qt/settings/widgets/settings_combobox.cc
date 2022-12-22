@@ -33,14 +33,13 @@ bool SettingsComboBox::Initialize() {
   }
 
   // set default value to match cvar
-  setCurrentIndex(item_.GetCurrentIndex());
+  int index = static_cast<int>(item_.GetCurrentIndex());
+  setCurrentIndex(index);
 
-  // update cvar when index changes
-  XComboBox::connect(this, QOverload<int>::of(&QComboBox::currentIndexChanged),
-                     [&](int index) {
-                       is_value_updating_ = true;
-                       item_.SetSelectedItem(index);
-                       is_value_updating_ = false;
+  // update selected multi-choice item when index changes
+  connect(this, QOverload<int>::of(&QComboBox::currentIndexChanged),
+                     [&item = item_](int index) {
+                       item.SetSelectedItem(index);
                      });
 
   return true;

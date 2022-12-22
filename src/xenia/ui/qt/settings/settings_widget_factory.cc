@@ -83,7 +83,7 @@ QWidget* SettingsWidgetFactory::CreateWidgetForSettingsItem(
       }
       case SettingsType::Slider: {
         return CreateRangeInputWidget(
-            dynamic_cast<NumberRangeSettingsItem&>(item));
+            dynamic_cast<SliderSettingsItem&>(item));
         break;
       }
       case SettingsType::MultiChoice: {
@@ -165,7 +165,7 @@ QWidget* SettingsWidgetFactory::CreateNumberInputWidget(
 }
 
 QWidget* SettingsWidgetFactory::CreateRangeInputWidget(
-    NumberRangeSettingsItem& item) {
+    SliderSettingsItem& item) {
   QWidget* ctr = new QWidget();
   QHBoxLayout* ctr_layout = new QHBoxLayout();
   ctr_layout->setContentsMargins(0, 0, 0, 0);
