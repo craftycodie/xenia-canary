@@ -101,9 +101,10 @@ SaveStatus Config::SaveConfig() {
       continue;
     }
 
-    if (config_var->requires_restart()) {
+    // TODO(razzile): Figure out a better way to handle config updates
+    /*if (config_var->requires_restart()) {
       status = SaveStatus::RequiresRestart;
-    }
+    }*/
 
     if (last_category != config_var->category()) {
       if (!last_category.empty()) {

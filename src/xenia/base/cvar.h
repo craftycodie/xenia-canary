@@ -27,6 +27,7 @@
 #include <jni.h>
 #endif  // XE_PLATFORM_ANDROID
 
+namespace xe {
 namespace cvar {
 
 namespace toml {
@@ -34,7 +35,7 @@ std::string EscapeString(const std::string_view str);
 }
 
 class ICommandVar {
- public:
+public:
   virtual ~ICommandVar() = default;
   virtual const std::string& name() const = 0;
   virtual const std::string& description() const = 0;
@@ -44,7 +45,7 @@ class ICommandVar {
 };
 
 class IConfigVar : virtual public ICommandVar {
- public:
+public:
   virtual const std::string& category() const = 0;
   virtual bool is_transient() const = 0;
   virtual std::string config_value() const = 0;
@@ -55,7 +56,7 @@ class IConfigVar : virtual public ICommandVar {
 
 template <class T>
 class CommandVar : virtual public ICommandVar {
- public:
+public:
   CommandVar<T>(const char* name, T* default_value, const char* description);
   const std::string& name() const override;
   const std::string& description() const override;
@@ -64,7 +65,7 @@ class CommandVar : virtual public ICommandVar {
   void SetCommandLineValue(T val);
   T* current_value() { return current_value_; }
 
- protected:
+protected:
   std::string name_;
   T default_value_;
   T* current_value_;
@@ -79,7 +80,7 @@ class CommandVar : virtual public ICommandVar {
 #pragma warning(disable : 4250)
 template <class T>
 class ConfigVar : public CommandVar<T>, virtual public IConfigVar {
- public:
+public:
   ConfigVar<T>(const char* name, T* default_value, const char* description,
                const char* category, bool is_transient);
   std::string config_value() const override;
@@ -97,7 +98,7 @@ class ConfigVar : public CommandVar<T>, virtual public IConfigVar {
   void OverrideConfigValue(T val);
   void ResetConfigValueToDefault() override;
 
- private:
+private:
   std::string category_;
   bool is_transient_;
   std::unique_ptr<T> config_value_ = nullptr;
@@ -110,99 +111,118 @@ template <class T>
 const std::string& CommandVar<T>::name() const {
   return name_;
 }
+
 template <class T>
 const std::string& CommandVar<T>::description() const {
   return description_;
 }
+
 template <class T>
 void CommandVar<T>::AddToLaunchOptions(cxxopts::Options* options) {
   options->add_options()(name_, description_, cxxopts::value<T>());
 }
+
 template <>
 inline void CommandVar<std::filesystem::path>::AddToLaunchOptions(
     cxxopts::Options* options) {
   options->add_options()(name_, description_, cxxopts::value<std::string>());
 }
+
 template <class T>
 void ConfigVar<T>::AddToLaunchOptions(cxxopts::Options* options) {
   options->add_options(category_)(this->name_, this->description_,
                                   cxxopts::value<T>());
 }
+
 template <>
 inline void ConfigVar<std::filesystem::path>::AddToLaunchOptions(
     cxxopts::Options* options) {
   options->add_options(category_)(this->name_, this->description_,
                                   cxxopts::value<std::string>());
 }
+
 template <class T>
 void CommandVar<T>::LoadFromLaunchOptions(cxxopts::ParseResult* result) {
   T value = (*result)[name_].template as<T>();
   SetCommandLineValue(value);
 }
+
 template <>
 inline void CommandVar<std::filesystem::path>::LoadFromLaunchOptions(
     cxxopts::ParseResult* result) {
   std::string value = (*result)[name_].template as<std::string>();
   SetCommandLineValue(value);
 }
+
 template <class T>
 void ConfigVar<T>::LoadConfigValue(std::shared_ptr<cpptoml::base> result) {
   SetConfigValue(*cpptoml::get_impl<T>(result));
 }
+
 template <>
 inline void ConfigVar<std::filesystem::path>::LoadConfigValue(
     std::shared_ptr<cpptoml::base> result) {
   SetConfigValue(
       xe::utf8::fix_path_separators(*cpptoml::get_impl<std::string>(result)));
 }
+
 template <class T>
 void ConfigVar<T>::LoadGameConfigValue(std::shared_ptr<cpptoml::base> result) {
   SetGameConfigValue(*cpptoml::get_impl<T>(result));
 }
+
 template <>
 inline void ConfigVar<std::filesystem::path>::LoadGameConfigValue(
     std::shared_ptr<cpptoml::base> result) {
   SetGameConfigValue(
       xe::utf8::fix_path_separators(*cpptoml::get_impl<std::string>(result)));
 }
+
 template <class T>
 CommandVar<T>::CommandVar(const char* name, T* default_value,
                           const char* description)
-    : name_(name),
-      default_value_(*default_value),
-      description_(description),
-      current_value_(default_value) {}
+  : name_(name),
+    default_value_(*default_value),
+    description_(description),
+    current_value_(default_value) {}
 
 template <class T>
 ConfigVar<T>::ConfigVar(const char* name, T* default_value,
                         const char* description, const char* category,
                         bool is_transient)
-    : CommandVar<T>(name, default_value, description),
-      category_(category),
-      is_transient_(is_transient) {}
+  : CommandVar<T>(name, default_value, description),
+    category_(category),
+    is_transient_(is_transient) {}
 
 template <class T>
 void CommandVar<T>::UpdateValue() {
-  if (commandline_value_) return SetValue(*commandline_value_);
+  if (commandline_value_)
+    return SetValue(*commandline_value_);
   return SetValue(default_value_);
 }
+
 template <class T>
 void ConfigVar<T>::UpdateValue() {
   if (this->commandline_value_) {
     return this->SetValue(*this->commandline_value_);
   }
-  if (game_config_value_) return this->SetValue(*game_config_value_);
-  if (config_value_) return this->SetValue(*config_value_);
+  if (game_config_value_)
+    return this->SetValue(*game_config_value_);
+  if (config_value_)
+    return this->SetValue(*config_value_);
   return this->SetValue(this->default_value_);
 }
+
 template <class T>
 T CommandVar<T>::Convert(std::string val) {
   return xe::string_util::from_string<T>(val);
 }
+
 template <>
 inline std::string CommandVar<std::string>::Convert(std::string val) {
   return val;
 }
+
 template <>
 inline std::filesystem::path CommandVar<std::filesystem::path>::Convert(
     std::string val) {
@@ -213,10 +233,12 @@ template <>
 inline std::string CommandVar<bool>::ToString(bool val) {
   return val ? "true" : "false";
 }
+
 template <>
 inline std::string CommandVar<std::string>::ToString(std::string val) {
   return toml::EscapeString(val);
 }
+
 template <>
 inline std::string CommandVar<std::filesystem::path>::ToString(
     std::filesystem::path val) {
@@ -236,38 +258,47 @@ template <class T>
 void CommandVar<T>::SetValue(T val) {
   *current_value_ = val;
 }
+
 template <class T>
 const std::string& ConfigVar<T>::category() const {
   return category_;
 }
+
 template <class T>
 bool ConfigVar<T>::is_transient() const {
   return is_transient_;
 }
+
 template <class T>
 std::string ConfigVar<T>::config_value() const {
-  if (config_value_) return this->ToString(*config_value_);
+  if (config_value_)
+    return this->ToString(*config_value_);
   return this->ToString(this->default_value_);
 }
+
 template <class T>
 const T& ConfigVar<T>::GetTypedConfigValue() const {
   return config_value_ ? *config_value_ : this->default_value_;
 }
+
 template <class T>
 void CommandVar<T>::SetCommandLineValue(const T val) {
   commandline_value_ = std::make_unique<T>(val);
   UpdateValue();
 }
+
 template <class T>
 void ConfigVar<T>::SetConfigValue(T val) {
   config_value_ = std::make_unique<T>(val);
   UpdateValue();
 }
+
 template <class T>
 void ConfigVar<T>::SetGameConfigValue(T val) {
   game_config_value_ = std::make_unique<T>(val);
   UpdateValue();
 }
+
 template <class T>
 void ConfigVar<T>::OverrideConfigValue(T val) {
   config_value_ = std::make_unique<T>(val);
@@ -278,6 +309,7 @@ void ConfigVar<T>::OverrideConfigValue(T val) {
   this->commandline_value_.reset();
   UpdateValue();
 }
+
 template <class T>
 void ConfigVar<T>::ResetConfigValueToDefault() {
   SetConfigValue(this->default_value_);
@@ -300,6 +332,7 @@ inline void AddCommandVar(ICommandVar* cv) {
   }
   CmdVars->emplace(cv->name(), cv);
 }
+
 void ParseLaunchArguments(int& argc, char**& argv,
                           const std::string_view positional_help,
                           const std::vector<std::string>& positional_options);
@@ -358,23 +391,27 @@ ICommandVar* define_cmdvar(const char* name, T* default_value,
               std::filesystem::path)
 
 #define DEFINE_CVar(name, default_value, description, category, is_transient, \
-                    type)                                                     \
+  type)                                                                       \
+  namespace xe {                                                              \
   namespace cvars {                                                           \
   type name = default_value;                                                  \
   }                                                                           \
   namespace cv {                                                              \
-  static cvar::IConfigVar* const cv_##name = cvar::define_configvar(          \
+  static cvar::IConfigVar* const cv_##name = xe::cvar::define_configvar(      \
       #name, &cvars::name, description, category, is_transient);              \
+  }                                                                           \
   }
 
 // CmdVars can only be strings for now, we don't need any others
 #define CmdVar(name, default_value, description)             \
+  namespace xe {                                             \
   namespace cvars {                                          \
   std::string name = default_value;                          \
   }                                                          \
   namespace cv {                                             \
   static cvar::ICommandVar* const cv_##name =                \
       cvar::define_cmdvar(#name, &cvars::name, description); \
+  }                                                          \
   }
 
 #define DECLARE_bool(name) DECLARE_CVar(name, bool)
@@ -392,15 +429,17 @@ ICommandVar* define_cmdvar(const char* name, T* default_value,
 #define DECLARE_path(name) DECLARE_CVar(name, std::filesystem::path)
 
 #define DECLARE_CVar(name, type) \
+  namespace xe {                 \
   namespace cvars {              \
-  extern type name;              \
+    extern type name;            \
+  }                              \
   }
 
 #define ACCESS_CVar(name) (*cv::cv_##name)
 
 // dynamic_cast is needed because of virtual inheritance.
-#define OVERRIDE_CVar(name, type, value)                   \
-  dynamic_cast<cvar::ConfigVar<type>*>(&ACCESS_CVar(name)) \
+#define OVERRIDE_CVar(name, type, value)                       \
+  dynamic_cast<xe::cvar::ConfigVar<type>*>(&ACCESS_CVar(name)) \
       ->OverrideConfigValue(value);
 
 #define OVERRIDE_bool(name, value) OVERRIDE_CVar(name, bool, value)
@@ -456,7 +495,7 @@ constexpr uint32_t MakeConfigVarUpdateDate(uint32_t year, uint32_t month,
 }
 
 class IConfigVarUpdate {
- public:
+public:
   // This global highest version constant is used to ensure that version (which
   // is stored as one value for the whole config file) is monotonically
   // increased when commits - primarily pull requests - are pushed to the main
@@ -513,10 +552,10 @@ class IConfigVarUpdate {
     return (updates_ && !updates_->empty()) ? updates_->crbegin()->first : 0;
   }
 
- protected:
+protected:
   IConfigVarUpdate(IConfigVar* const& config_var, uint32_t year, uint32_t month,
                    uint32_t day, uint32_t utc_hour)
-      : config_var_(config_var) {
+    : config_var_(config_var) {
     if (!updates_) {
       updates_ = new std::multimap<uint32_t, const IConfigVarUpdate*>;
     }
@@ -529,7 +568,7 @@ class IConfigVarUpdate {
     return *config_var_;
   }
 
- private:
+private:
   // Reference to pointer to loosen initialization order requirements.
   IConfigVar* const& config_var_;
 
@@ -539,20 +578,20 @@ class IConfigVarUpdate {
 };
 
 class ConfigVarUpdateFromAny : public IConfigVarUpdate {
- public:
+public:
   ConfigVarUpdateFromAny(IConfigVar* const& config_var, uint32_t year,
                          uint32_t month, uint32_t day, uint32_t utc_hour)
-      : IConfigVarUpdate(config_var, year, month, day, utc_hour) {}
+    : IConfigVarUpdate(config_var, year, month, day, utc_hour) {}
   void Apply() const override { config_var().ResetConfigValueToDefault(); }
 };
 
 template <typename T>
 class ConfigVarUpdate : public IConfigVarUpdate {
- public:
+public:
   ConfigVarUpdate(IConfigVar* const& config_var, uint32_t year, uint32_t month,
                   uint32_t day, uint32_t utc_hour, const T& old_default_value)
-      : IConfigVarUpdate(config_var, year, month, day, utc_hour),
-        old_default_value_(old_default_value) {}
+    : IConfigVarUpdate(config_var, year, month, day, utc_hour),
+      old_default_value_(old_default_value) {}
   void Apply() const override {
     IConfigVar& config_var_untyped = config_var();
     ConfigVar<T>* config_var_typed =
@@ -565,37 +604,41 @@ class ConfigVarUpdate : public IConfigVarUpdate {
     }
   }
 
- private:
+private:
   T old_default_value_;
 };
 
 #define UPDATE_from_any(name, year, month, day, utc_hour)                     \
   static_assert(                                                              \
-      cvar::MakeConfigVarUpdateDate(year, month, day, utc_hour) <=            \
-          cvar::IConfigVarUpdate::kLastCommittedUpdateDate,                   \
+      xe::cvar::MakeConfigVarUpdateDate(year, month, day, utc_hour) <=        \
+          xe::cvar::IConfigVarUpdate::kLastCommittedUpdateDate,               \
       "A new config variable default value update was added - raise "         \
       "cvar::IConfigVarUpdate::kLastCommittedUpdateDate to the same date in " \
       "base/cvar.h to ensure coherence between different pull requests "      \
       "updating config variable defaults.");                                  \
+  namespace xe {                                                              \
   namespace cv {                                                              \
-  static const cvar::ConfigVarUpdateFromAny                                   \
+  static const xe::cvar::ConfigVarUpdateFromAny                               \
       update_##name_##year_##month_##day_##utc_hour(cv_##name, year, month,   \
                                                     day, utc_hour);           \
+  }                                                                           \
   }
 
 #define UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, type) \
   static_assert(                                                               \
-      cvar::MakeConfigVarUpdateDate(year, month, day, utc_hour) <=             \
-          cvar::IConfigVarUpdate::kLastCommittedUpdateDate,                    \
+      xe::cvar::MakeConfigVarUpdateDate(year, month, day, utc_hour) <=         \
+          xe::cvar::IConfigVarUpdate::kLastCommittedUpdateDate,                \
       "A new config variable default value update was added - raise "          \
       "cvar::IConfigVarUpdate::kLastCommittedUpdateDate to the same date in "  \
       "base/cvar.h to ensure coherence between different pull requests "       \
       "updating config variable defaults.");                                   \
+  namespace xe {                                                               \
   namespace cv {                                                               \
   static const cvar::ConfigVarUpdate<type>                                     \
       update_##name_##year_##month_##day_##utc_hour(cv_##name, year, month,    \
                                                     day, utc_hour,             \
                                                     old_default_value);        \
+  }                                                                            \
   }
 
 #define UPDATE_from_bool(name, year, month, day, utc_hour, old_default_value) \
@@ -605,25 +648,26 @@ class ConfigVarUpdate : public IConfigVarUpdate {
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, int32_t)
 
 #define UPDATE_from_uint32(name, year, month, day, utc_hour, \
-                           old_default_value)                \
+  old_default_value)                \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, uint32_t)
 
 #define UPDATE_from_uint64(name, year, month, day, utc_hour, \
-                           old_default_value)                \
+  old_default_value)                \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, uint64_t)
 
 #define UPDATE_from_double(name, year, month, day, utc_hour, \
-                           old_default_value)                \
+  old_default_value)                \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, double)
 
 #define UPDATE_from_string(name, year, month, day, utc_hour, \
-                           old_default_value)                \
+  old_default_value)                \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value, std::string)
 
 #define UPDATE_from_path(name, year, month, day, utc_hour, old_default_value) \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value,            \
               std::filesystem::path)
 
-}  // namespace cvar
+} // namespace cvar
+} // namespace xe
 
 #endif  // XENIA_CVAR_H_

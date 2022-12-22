@@ -298,7 +298,6 @@ workspace("xenia")
   include("src/xenia/kernel")
   include("src/xenia/ui")
   include("src/xenia/ui/qt")
-  include("src/xenia/ui/spirv")
   include("src/xenia/ui/vulkan")
   include("src/xenia/vfs")
 
