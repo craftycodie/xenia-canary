@@ -11,18 +11,18 @@ namespace qt {
 
 class LibraryTab : public XTab {
   Q_OBJECT
-  public:
-    explicit LibraryTab();
+ public:
+  explicit LibraryTab();
 
-  private:
-    void Build();
-    void BuildToolBar();
-    void BuildListView();
+ private:
+  void Build();
+  void BuildToolBar();
+  void BuildListView();
 
-    QVBoxLayout* layout_ = nullptr;
-    XToolBar* toolbar_ = nullptr;
-    XGameListView* list_view_ = nullptr;
-    QSlider* slider_ = nullptr;
+  QVBoxLayout* layout_ = nullptr;
+  XToolBar* toolbar_ = nullptr;
+  XGameListView* list_view_ = nullptr;
+  QSlider* slider_ = nullptr;
 };
 
 }  // namespace qt

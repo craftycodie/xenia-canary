@@ -24,12 +24,12 @@ using namespace xe::cvar;
 class SettingsComboBox : public XComboBox {
   Q_OBJECT
 
-public:
+ public:
   explicit SettingsComboBox(MultiChoiceSettingsItem& item);
 
   bool Initialize();
 
-private:
+ private:
   MultiChoiceSettingsItem& item_;
   std::atomic_bool is_value_updating_ = false;
 };

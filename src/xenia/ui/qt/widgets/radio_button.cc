@@ -9,8 +9,8 @@ namespace ui {
 namespace qt {
 
 XRadioButton::XRadioButton(QWidget* parent)
-  : Themeable<QRadioButton>("XRadioButton", parent) {
-  setFocusPolicy(Qt::TabFocus); // disable retaining focus through mouse click
+    : Themeable<QRadioButton>("XRadioButton", parent) {
+  setFocusPolicy(Qt::TabFocus);  // disable retaining focus through mouse click
 }
 
 void XRadioButton::paintEvent(QPaintEvent* e) {
@@ -21,15 +21,13 @@ void XRadioButton::paintEvent(QPaintEvent* e) {
   // rect must start at 1 as the painter draws either side of start offset so
   // starting at (0,0) would leave 2 sides cut off
   QRectF indicator_rect = style()->proxy()->subElementRect(
-      QStyle::SE_RadioButtonIndicator, &option,
-      this);
+      QStyle::SE_RadioButtonIndicator, &option, this);
   QRectF indicator_box =
       QRectF(indicator_rect.x() + 1.0, indicator_rect.y() + 0.0, 16, 16);
 
   // get original rect for radio button label
   QRect label_rect = style()->proxy()->subElementRect(
-      QStyle::SE_RadioButtonContents, &option,
-      this);
+      QStyle::SE_RadioButtonContents, &option, this);
 
   QPainter painter(this);
   painter.setRenderHints(QPainter::Antialiasing);
@@ -83,6 +81,6 @@ QSize XRadioButton::sizeHint() const {
   return QRadioButton::sizeHint() + QSize(label_indent_, 0);
 }
 
-} // namespace qt
-} // namespace ui
-} // namespace xe
+}  // namespace qt
+}  // namespace ui
+}  // namespace xe

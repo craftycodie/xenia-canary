@@ -116,7 +116,8 @@ inline const std::filesystem::path GetFileExtension(
   return xe::utf8::lower_ascii(xe::path_to_utf8(path.extension()));
 }
 
-inline const std::filesystem::path GetFileName(const std::filesystem::path& path) {
+inline const std::filesystem::path GetFileName(
+    const std::filesystem::path& path) {
   return path.filename();
 }
 

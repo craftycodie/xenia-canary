@@ -3,12 +3,11 @@
 
 #include <QWidget>
 
+#include "xenia/app/settings/settings.h"
 #include "xenia/base/cvar.h"
 #include "xenia/config.h"
-#include "xenia/app/settings/settings.h"
-#include "xenia/ui/qt/themeable_widget.h"
 #include "xenia/ui/qt/settings/settings_widget_factory.h"
-#include "xenia/config.h"
+#include "xenia/ui/qt/themeable_widget.h"
 
 namespace xe {
 namespace ui {

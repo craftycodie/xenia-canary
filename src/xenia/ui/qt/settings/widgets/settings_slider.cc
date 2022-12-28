@@ -27,9 +27,8 @@ bool SettingsSlider::Initialize() {
 
   setValue(item_.value());
 
-  connect(this, &XSlider::valueChanged, [&](int value) {
-    item_.set_value(value);
-  });
+  connect(this, &XSlider::valueChanged,
+          [&](int value) { item_.set_value(value); });
 
   return true;
 }

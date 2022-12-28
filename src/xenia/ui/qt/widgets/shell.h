@@ -7,8 +7,8 @@
 
 #include <QKeyEvent>
 #include <QMainWindow>
-#include <QVBoxLayout>
 #include <QStackedLayout>
+#include <QVBoxLayout>
 #include <map>
 #include <vector>
 

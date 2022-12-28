@@ -47,7 +47,6 @@ void GeneralPane::Build() {
   set_widget(scroll_area);
 }
 
-
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe

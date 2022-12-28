@@ -8,7 +8,7 @@ XSideBar::XSideBar() : Themeable<QToolBar>("XSideBar") {}
 
 XSideBarButton* XSideBar::addAction(const QString& text) {
   auto button = new XSideBarButton(text);
-  
+
   buttons_.append(button);
   QToolBar::addWidget(button);
 

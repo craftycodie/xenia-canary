@@ -50,7 +50,8 @@ void ThemeManager::LoadThemes() {
   while (iter.hasNext()) {
     Theme t(iter.next());
     ThemeStatus status = t.LoadTheme();
-	assert(status == ThemeStatus::THEME_LOAD_OK); // TODO: better error handling
+    assert(status ==
+           ThemeStatus::THEME_LOAD_OK);  // TODO: better error handling
     themes_.push_back(t);
   }
 }

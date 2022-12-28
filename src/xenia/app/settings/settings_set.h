@@ -23,25 +23,22 @@ using SettingsItemPtr = std::unique_ptr<class ISettingsItem>;
 using SettingsGroupPtr = std::unique_ptr<class SettingsGroup>;
 
 class SettingsGroup {
-public:
-  explicit SettingsGroup(std::string_view title)
-    : title_(title) {}
+ public:
+  explicit SettingsGroup(std::string_view title) : title_(title) {}
 
   const std::string& title() const { return title_; }
   std::vector<ISettingsItem*> items() const;
 
   void AddSettingsItem(SettingsItemPtr&& item);
 
-private:
+ private:
   std::string title_;
   std::unordered_map<std::string, SettingsItemPtr> items_;
 };
 
 class SettingsSet {
  public:
-  explicit SettingsSet(std::string_view title)
-    : title_(title),
-      groups_() {}
+  explicit SettingsSet(std::string_view title) : title_(title), groups_() {}
 
   virtual ~SettingsSet() = default;
 
@@ -65,7 +62,7 @@ class SettingsSet {
    */
   std::vector<SettingsGroup*> GetSettingsGroups() const;
 
-protected:
+ protected:
   void AddSettingsItem(const std::string& group_name, SettingsItemPtr&& item);
 
  private:

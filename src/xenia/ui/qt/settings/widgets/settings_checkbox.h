@@ -24,14 +24,13 @@ using namespace xe::cvar;
 class SettingsCheckBox : public XCheckBox {
   Q_OBJECT
 
-public:
+ public:
   explicit SettingsCheckBox(SwitchSettingsItem& item);
   ~SettingsCheckBox();
 
-
   bool Initialize();
 
-private:
+ private:
   SwitchSettingsItem& item_;
 };
 

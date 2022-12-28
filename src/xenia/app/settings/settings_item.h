@@ -51,39 +51,37 @@ struct ValueStore {
 template <typename T>
 struct RawValueStore : ValueStore<T> {
   RawValueStore(T& location, const T& default_value)
-    : default_value_(default_value),
-      value_(&location) {}
+      : default_value_(default_value), value_(&location) {}
 
   const T& GetValue() const override { return *value_; }
   void SetValue(const T& value) override { *value_ = value; }
   void ResetValue() override { SetValue(default_value_); }
 
-private:
+ private:
   T default_value_;
   T* value_;
 };
 
 template <typename T>
 struct CvarValueStore : ValueStore<T> {
-  CvarValueStore(cvar::ConfigVar<T>& cvar)
-    : cvar_(&cvar) {}
+  CvarValueStore(cvar::ConfigVar<T>& cvar) : cvar_(&cvar) {}
 
   const T& GetValue() const override { return *cvar_->current_value(); }
   void SetValue(const T& value) override { cvar_->SetConfigValue(value); }
   void ResetValue() override { cvar_->ResetConfigValueToDefault(); }
 
-private:
+ private:
   cvar::ConfigVar<T>* cvar_;
 };
 
 class ISettingsItem {
-public:
+ public:
   ISettingsItem(SettingsType type, std::string_view key, std::string_view title,
                 std::string_view description)
-    : settings_type_(type),
-      key_(key),
-      title_(title),
-      description_(description) {}
+      : settings_type_(type),
+        key_(key),
+        title_(title),
+        description_(description) {}
 
   virtual ~ISettingsItem() = default;
 
@@ -92,7 +90,7 @@ public:
   const std::string& title() const { return title_; }
   const std::string& description() const { return description_; }
 
-private:
+ private:
   SettingsType settings_type_;
   std::string key_;
   std::string title_;
@@ -101,7 +99,7 @@ private:
 
 template <SettingsType Type, typename T>
 class ValueSettingsItem : public ISettingsItem {
-public:
+ public:
   using ValueType = T;
 
   virtual ~ValueSettingsItem() = default;
@@ -109,13 +107,13 @@ public:
   ValueSettingsItem(std::string_view key, std::string_view title,
                     std::string_view description,
                     std::unique_ptr<ValueStore<T>> store)
-    : ISettingsItem(Type, key, title, description),
-      value_store_(std::move(store)) {}
+      : ISettingsItem(Type, key, title, description),
+        value_store_(std::move(store)) {}
 
   const T& value() const { return value_store_->GetValue(); }
   void set_value(const T& value) { value_store_->SetValue(value); }
 
-private:
+ private:
   std::unique_ptr<ValueStore<T>> value_store_;
 };
 
@@ -133,22 +131,22 @@ DECLARE_SETTINGS_ITEM(NumberInput, int64_t);
 
 class SliderSettingsItem
     : public ValueSettingsItem<SettingsType::Slider, int32_t> {
-public:
+ public:
   SliderSettingsItem(const std::string_view& key, const std::string_view& title,
                      const std::string_view& description,
                      std::unique_ptr<ValueStore<int32_t>> store, int min,
                      int max, int step)
-    : ValueSettingsItem<SettingsType::Slider, int>(key, title, description,
-                                                   std::move(store)),
-      min_(min),
-      max_(max),
-      step_(step) {}
+      : ValueSettingsItem<SettingsType::Slider, int>(key, title, description,
+                                                     std::move(store)),
+        min_(min),
+        max_(max),
+        step_(step) {}
 
   int min() const { return min_; }
   int max() const { return max_; }
   int step() const { return step_; }
 
-private:
+ private:
   int min_;
   int max_;
   int step_;
@@ -156,7 +154,7 @@ private:
 
 class MultiChoiceSettingsItem
     : public ValueSettingsItem<SettingsType::MultiChoice, std::string> {
-public:
+ public:
   struct Option {
     std::string value;
     std::string title;
@@ -166,15 +164,15 @@ public:
                           std::string_view description,
                           std::unique_ptr<ValueStore<std::string>> store,
                           std::initializer_list<Option> options)
-    : ValueSettingsItem(key, title, description, std::move(store)),
-      options_(options) {}
+      : ValueSettingsItem(key, title, description, std::move(store)),
+        options_(options) {}
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
                           std::string_view description,
                           std::unique_ptr<ValueStore<std::string>> store,
                           const std::vector<Option>& options)
-    : ValueSettingsItem(key, title, description, std::move(store)),
-      options_(options) {}
+      : ValueSettingsItem(key, title, description, std::move(store)),
+        options_(options) {}
 
   /**
    * @return the string titles of all available options for this multi-choice
@@ -226,7 +224,7 @@ public:
     return true;
   }
 
-private:
+ private:
   std::vector<Option> options_;
   unsigned int selection_ = 0;
 };
@@ -234,7 +232,7 @@ private:
 struct ActionSettingsItem : ISettingsItem {
   ActionSettingsItem(std::string_view key, std::string_view title,
                      std::string_view description)
-    : ISettingsItem(SettingsType::Action, key, title, description) {}
+      : ISettingsItem(SettingsType::Action, key, title, description) {}
 };
 
 // class SwitchSettingsItem : ValueSettingsItem<SettingsType::Switch, bool> {
@@ -414,8 +412,8 @@ struct ActionSettingsItem : ISettingsItem {
 //                     std::string_view description);
 //};
 
-} // namespace settings
-} // namespace app
-} // namespace xe
+}  // namespace settings
+}  // namespace app
+}  // namespace xe
 
 #endif

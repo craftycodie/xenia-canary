@@ -24,13 +24,13 @@ using namespace xe::cvar;
 class SettingsLineEdit : public XLineEdit {
   Q_OBJECT;
 
-public:
+ public:
   explicit SettingsLineEdit(TextInputSettingsItem& item);
   explicit SettingsLineEdit(PathInputSettingsItem& item);
 
   bool Initialize();
 
-private:
+ private:
   ISettingsItem& item_;
   std::atomic_bool is_value_updating_ = false;
 };

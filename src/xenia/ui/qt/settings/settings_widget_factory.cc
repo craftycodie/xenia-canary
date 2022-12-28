@@ -82,8 +82,7 @@ QWidget* SettingsWidgetFactory::CreateWidgetForSettingsItem(
         break;
       }
       case SettingsType::Slider: {
-        return CreateRangeInputWidget(
-            dynamic_cast<SliderSettingsItem&>(item));
+        return CreateRangeInputWidget(dynamic_cast<SliderSettingsItem&>(item));
         break;
       }
       case SettingsType::MultiChoice: {

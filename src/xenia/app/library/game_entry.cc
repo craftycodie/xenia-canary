@@ -14,10 +14,7 @@ std::optional<GameEntry> GameEntry::FromGameInfo(const GameInfo& info) {
 };
 
 GameEntry::GameEntry()
-: format_(XGameFormat::kUnknown),
-  regions_(XGameRegions::XEX_REGION_ALL) {
-
-}
+    : format_(XGameFormat::kUnknown), regions_(XGameRegions::XEX_REGION_ALL) {}
 
 bool GameEntry::is_valid() const {
   // Minimum requirements
@@ -50,7 +47,7 @@ bool GameEntry::apply_info(const GameInfo& info) {
   uint32_t build = version_data.build;
   uint32_t qfe = version_data.qfe;
 
-  version_ = fmt::format("{0}.{1}.{2}.{3}",major, minor,build, qfe);
+  version_ = fmt::format("{0}.{1}.{2}.{3}", major, minor, build, qfe);
 
   auto ratings_info = xex_info.game_ratings;
   ratings_[GameRatingRegulator::Esrb] = ratings_info.esrb;
@@ -66,7 +63,8 @@ bool GameEntry::apply_info(const GameInfo& info) {
   ratings_[GameRatingRegulator::Brazil] = ratings_info.brazil;
   ratings_[GameRatingRegulator::Fpb] = ratings_info.fpb;
 
-  regions_ = static_cast<xex2_region_flags>(xex_info.security_info.region.get());
+  regions_ =
+      static_cast<xex2_region_flags>(xex_info.security_info.region.get());
 
   // Add to disc map / launch paths
   auto disc_id = xex_info.execution_info.disc_number;
@@ -84,12 +82,11 @@ bool GameEntry::apply_info(const GameInfo& info) {
     title_ = "<unknown>";
   }
 
- 
   uint8_t* icon_data = nullptr;
   size_t icon_size = 0;
   // TODO: prefer nxe icon over xex icon?
   if (xex_info.icon) {
-      icon_data = xex_info.icon;
+    icon_data = xex_info.icon;
     icon_size = xex_info.icon_size;
   } else if (nxe_info.icon) {
     icon_data = nxe_info.icon;

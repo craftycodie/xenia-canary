@@ -10,7 +10,7 @@ using AsyncCallback = GameLibrary::AsyncCallback;
 
 GameLibrary& GameLibrary::Instance() {
   static GameLibrary gameLibrary;
-  
+
   return gameLibrary;
 }
 
@@ -83,7 +83,8 @@ void GameLibrary::AddGame(const GameEntry& game) {
   const auto& end = games_.end();
 
   auto result = end;
-  // check if title already exists in library (but skip titles with a title id of 00000000)
+  // check if title already exists in library (but skip titles with a title id
+  // of 00000000)
   if (title_id != 0x00000000) {
     result = std::find_if(begin, end, [title_id](const GameEntry& entry) {
       return entry.title_id() == title_id;

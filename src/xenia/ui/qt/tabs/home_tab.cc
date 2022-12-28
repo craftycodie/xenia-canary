@@ -169,16 +169,15 @@ void HomeTab::PlayTriggered() {
     QString path = path_index.data().toString();
 
     // TODO: Launch target at `path`
-   
   }
 }
 
 void HomeTab::OpenFileTriggered() {
   QString file_name = QFileDialog::getOpenFileName(
       this, "Open Game", "",
-      tr("All Xbox 360 Files (*.xex *.iso);;Xbox 360 Executable (*.xex);;Disc Image (*.iso);;All Files (*)"));
+      tr("All Xbox 360 Files (*.xex *.iso);;Xbox 360 Executable (*.xex);;Disc "
+         "Image (*.iso);;All Files (*)"));
   if (!file_name.isEmpty()) {
-
     GameLibrary& lib = GameLibrary::Instance();
     lib.ScanPath(file_name.toUtf8().constData());
 
@@ -189,7 +188,6 @@ void HomeTab::OpenFileTriggered() {
 void HomeTab::ImportFolderTriggered() {
   QString path = QFileDialog::getExistingDirectory(this, "Open Folder", "");
   if (!path.isEmpty()) {
-
     QWidget* progress_widget = new QWidget();
     QHBoxLayout* layout = new QHBoxLayout();
     layout->setContentsMargins(0, 0, 0, 0);
@@ -213,22 +211,22 @@ void HomeTab::ImportFolderTriggered() {
     window->AddStatusBarWidget(progress_widget);
 
     GameLibrary& lib = GameLibrary::Instance();
-    lib.ScanPathAsync(path.toUtf8().constData(), [=](double progress,
-                                                      const GameEntry& entry) {
-      // update progress bar on main UI thread
-      QMetaObject::invokeMethod(
-          bar,
-          [=]() {
-            bar->setValue(progress);
-            if (progress == 100.0) {
-              window->RemoveStatusBarWidget(progress_widget);
-            }
-          },
-          Qt::QueuedConnection);
-      // Just a PoC. In future change to refresh list
-      // when all games added.
-      list_view_->RefreshGameList();
-    });
+    lib.ScanPathAsync(path.toUtf8().constData(),
+                      [=](double progress, const GameEntry& entry) {
+                        // update progress bar on main UI thread
+                        QMetaObject::invokeMethod(
+                            bar,
+                            [=]() {
+                              bar->setValue(progress);
+                              if (progress == 100.0) {
+                                window->RemoveStatusBarWidget(progress_widget);
+                              }
+                            },
+                            Qt::QueuedConnection);
+                        // Just a PoC. In future change to refresh list
+                        // when all games added.
+                        list_view_->RefreshGameList();
+                      });
   }
 }
 

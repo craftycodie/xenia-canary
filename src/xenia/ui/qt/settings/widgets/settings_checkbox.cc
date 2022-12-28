@@ -12,7 +12,7 @@
 namespace xe {
 namespace ui {
 namespace qt {
-  
+
 using namespace xe::app::settings;
 using namespace xe::cvar;
 
@@ -21,10 +21,9 @@ SettingsCheckBox::SettingsCheckBox(SwitchSettingsItem& item)
   assert_true(Initialize(), "Could not initialize SettingsCheckBox");
 }
 
-SettingsCheckBox::~SettingsCheckBox() {  }
+SettingsCheckBox::~SettingsCheckBox() {}
 
 bool SettingsCheckBox::Initialize() {
-
   setCheckState(item_.value() ? Qt::Checked : Qt::Unchecked);
 
   // update settings item when checkbox state changes
@@ -34,21 +33,22 @@ bool SettingsCheckBox::Initialize() {
     } else if (state == Qt::Unchecked) {
       item_.set_value(false);
     } else {
-      assert_always("PartiallyChecked state not supported for SettingsCheckBox");
+      assert_always(
+          "PartiallyChecked state not supported for SettingsCheckBox");
     }
   });
 
   return true;
 }
 
-//void SettingsCheckBox::OnValueUpdated(const ICommandVar& var) {
-//  const auto& new_value = item_.cvar()->current_value();
-//  if (!this->is_value_updating_) {
-//    // emit state change on ui thread
-//    QMetaObject::invokeMethod(this, "setChecked", Qt::QueuedConnection,
-//                              Q_ARG(bool, *new_value));
-//  }
-//}
+// void SettingsCheckBox::OnValueUpdated(const ICommandVar& var) {
+//   const auto& new_value = item_.cvar()->current_value();
+//   if (!this->is_value_updating_) {
+//     // emit state change on ui thread
+//     QMetaObject::invokeMethod(this, "setChecked", Qt::QueuedConnection,
+//                               Q_ARG(bool, *new_value));
+//   }
+// }
 
 }  // namespace qt
 }  // namespace ui

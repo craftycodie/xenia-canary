@@ -10,7 +10,6 @@ namespace xe {
 namespace ui {
 namespace qt {
 
-using xe::app::library::GameLibrary;
 using xe::app::library::GameEntry;
 using xe::app::library::GameLibrary;
 

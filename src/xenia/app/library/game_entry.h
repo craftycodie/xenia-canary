@@ -2,8 +2,8 @@
 #define XENIA_APP_GAME_ENTRY_H_
 
 #include <map>
-#include <vector>
 #include <optional>
+#include <vector>
 #include "xenia/app/library/scanner_utils.h"
 #include "xenia/kernel/util/xex2_info.h"
 
@@ -15,8 +15,8 @@ namespace library {
 enum class GameRatingRegulator : uint8_t {
   Esrb,
   Pegi,
-  PegiFI, // finland
-  PegiPT, // portugal
+  PegiFI,  // finland
+  PegiPT,  // portugal
   Bbfc,
   Cero,
   Usk,
@@ -30,7 +30,8 @@ enum class GameRatingRegulator : uint8_t {
 class GameEntry {
  public:
   using IconData = std::vector<uint8_t>;
-  using GameRatingMap = std::map<GameRatingRegulator, uint32_t>; //key: regulator, value: rating
+  using GameRatingMap =
+      std::map<GameRatingRegulator, uint32_t>;  // key: regulator, value: rating
 
   static std::optional<GameEntry> FromGameInfo(const GameInfo& info);
 

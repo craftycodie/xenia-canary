@@ -6,21 +6,21 @@ namespace xe {
 namespace ui {
 namespace qt {
 
-LibraryTab::LibraryTab() : XTab("Library") { 
+LibraryTab::LibraryTab() : XTab("Library") {
   Build();
   return;
 }
 
-void LibraryTab::Build() { 
-    layout_ = new QVBoxLayout();
-    layout_->setMargin(0);
-    layout_->setSpacing(0);
-    setLayout(layout_);
+void LibraryTab::Build() {
+  layout_ = new QVBoxLayout();
+  layout_->setMargin(0);
+  layout_->setSpacing(0);
+  setLayout(layout_);
 
-    BuildToolBar();
-    BuildListView();
-    connect(slider_, SIGNAL(valueChanged(int)), list_view_,
-            SLOT(setRowSize(int)));
+  BuildToolBar();
+  BuildListView();
+  connect(slider_, SIGNAL(valueChanged(int)), list_view_,
+          SLOT(setRowSize(int)));
 }
 
 void LibraryTab::BuildToolBar() {
@@ -43,7 +43,7 @@ void LibraryTab::BuildToolBar() {
   toolbar_->addAction(new XAction(QChar(0xF0E2), "Grid"));
 
   slider_ = new XSlider(Qt::Horizontal, this);
-  slider_->setRange(48,96);
+  slider_->setRange(48, 96);
   slider_->setFixedWidth(100);
   toolbar_->addWidget(slider_);
 }

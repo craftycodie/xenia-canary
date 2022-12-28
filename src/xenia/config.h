@@ -88,8 +88,8 @@ class Config {
    * Claims ownership of the provided pointer
    */
   template <typename T>
-  cvar::ConfigVar<T>*
-  RegisterConfigVar(std::unique_ptr<cvar::ConfigVar<T>> var);
+  cvar::ConfigVar<T>* RegisterConfigVar(
+      std::unique_ptr<cvar::ConfigVar<T>> var);
 
   /**
    * Register a command var to the config system

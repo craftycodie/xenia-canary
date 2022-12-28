@@ -29,7 +29,7 @@ class SettingsSlider : public XSlider {
 
   bool Initialize();
 
-private:
+ private:
   SliderSettingsItem& item_;
 };
 

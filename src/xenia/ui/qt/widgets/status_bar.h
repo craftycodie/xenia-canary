@@ -11,7 +11,7 @@ namespace qt {
 
 class XStatusBar : public Themeable<QStatusBar> {
  public:
-     explicit XStatusBar(QWidget* parent = nullptr);
+  explicit XStatusBar(QWidget* parent = nullptr);
 };
 
 }  // namespace qt

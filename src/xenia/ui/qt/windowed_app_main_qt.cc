@@ -10,9 +10,9 @@
 #undef UNICODE
 #undef _UNICODE
 
+#include <QApplication>
 #include <cstdlib>
 #include <memory>
-#include <QApplication>
 
 #include <QCoreApplication>
 #include <QFontDatabase>
@@ -26,8 +26,8 @@
 #include "xenia/base/cvar.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/main_win.h"
-#include "xenia/base/platform_win.h"
 #include "xenia/base/platform.h"
+#include "xenia/base/platform_win.h"
 #include "xenia/ui/windowed_app.h"
 
 DEFINE_bool(enable_console, false, "Open a console window with the main window",
@@ -72,12 +72,12 @@ int main(int argc, char** argv) {
   xe::InitializeWin32App(app->GetName());
 #endif
 
-  int result =
-      app->OnInitialize() ? app_context.RunMainMessageLoop(qt_app) : EXIT_FAILURE;
+  int result = app->OnInitialize() ? app_context.RunMainMessageLoop(qt_app)
+                                   : EXIT_FAILURE;
 
   app->InvokeOnDestroy();
 
-  //int result = qt_app.exec();
+  // int result = qt_app.exec();
 
   return result;
 }

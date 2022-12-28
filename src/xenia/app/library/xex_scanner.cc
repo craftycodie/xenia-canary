@@ -254,9 +254,9 @@ inline void ReadXexFileFormatInfo(uint8_t* data, XexInfo* info) {
              : "NONE",
          info->file_format_info->compression_type == XEX_COMPRESSION_NORMAL
              ? "NORMAL"
-             : info->file_format_info->compression_type == XEX_COMPRESSION_BASIC
-                   ? "BASIC"
-                   : "NONE");
+         : info->file_format_info->compression_type == XEX_COMPRESSION_BASIC
+             ? "BASIC"
+             : "NONE");
 }
 
 inline void ReadXexGameRatings(uint8_t* data, XexInfo* info) {

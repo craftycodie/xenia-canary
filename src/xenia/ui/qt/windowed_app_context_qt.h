@@ -19,20 +19,20 @@ namespace ui {
 namespace qt {
 
 class QtWindowedAppContext : public WindowedAppContext {
-public:
+ public:
   explicit QtWindowedAppContext();
 
   ~QtWindowedAppContext() override;
 
   int RunMainMessageLoop(QApplication& app);
 
-protected:
+ protected:
   void NotifyUILoopOfPendingFunctions() override;
   void PlatformQuitFromUIThread() override;
 };
 
-}
-}
-}
+}  // namespace qt
+}  // namespace ui
+}  // namespace xe
 
 #endif  // XENIA_UI_WINDOWED_APP_CONTEXT_WIN_H_

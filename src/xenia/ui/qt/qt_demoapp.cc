@@ -9,16 +9,16 @@
 
 #include <filesystem>
 
-#include <QFile>
 #include <QCoreApplication>
+#include <QFile>
 #include <QGuiApplication>
 #include <QScreen>
 
 #include "main_window.h"
 #include "window_qt.h"
-#include "xenia/config.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/logging.h"
+#include "xenia/config.h"
 #include "xenia/ui/window.h"
 #include "xenia/ui/windowed_app.h"
 
@@ -69,7 +69,7 @@ namespace ui {
 namespace qt {
 
 class QtDemoApp final : public xe::ui::WindowedApp {
-public:
+ public:
   static std::unique_ptr<WindowedApp> Create(
       xe::ui::WindowedAppContext& app_context) {
     return std::unique_ptr<WindowedApp>(new QtDemoApp(app_context));
@@ -77,17 +77,19 @@ public:
 
   ~QtDemoApp() override;
   bool OnInitialize() override;
-protected:
+
+ protected:
   void OnDestroy() override;
 
-private:
+ private:
   std::unique_ptr<QtWindow> window_;
   explicit QtDemoApp(WindowedAppContext& app_context);
 };
 
 QtDemoApp::QtDemoApp(WindowedAppContext& app_context)
     : WindowedApp(app_context, "xenia"),
-      window_(std::make_unique<MainWindow>(app_context, "Xenia Qt Demo App", 1280, 720)) {}
+      window_(std::make_unique<MainWindow>(app_context, "Xenia Qt Demo App",
+                                           1280, 720)) {}
 
 QtDemoApp::~QtDemoApp() = default;
 
@@ -148,7 +150,7 @@ bool QtDemoApp::OnInitialize() {
   QByteArray icon_data = icon_file.readAll();
   window_->SetIcon(icon_data.data(), icon_data.size());
   window_->move(qApp->primaryScreen()->geometry().center() -
-                 window_->rect().center());
+                window_->rect().center());
 
   return true;
 }
@@ -158,6 +160,5 @@ void QtDemoApp::OnDestroy() { Config::Instance().SaveConfig(); }
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe
-
 
 XE_DEFINE_WINDOWED_APP(xenia_demoapp, xe::ui::qt::QtDemoApp::Create);

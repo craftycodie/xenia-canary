@@ -73,7 +73,6 @@ class QtMenuItem : public MenuItem {
   QMenu* qt_menu_;
 };
 
-
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe

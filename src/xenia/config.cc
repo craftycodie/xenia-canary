@@ -37,9 +37,7 @@ Config& Config::Instance() {
   return config;
 }
 
-Config::Config() : options_("xenia", "Xbox 360 Emulator") {
-  
-}
+Config::Config() : options_("xenia", "Xbox 360 Emulator") {}
 
 std::shared_ptr<cpptoml::table> ParseConfig(
     const std::filesystem::path& config_path) {
@@ -83,8 +81,7 @@ SaveStatus Config::SaveConfig() {
   for (const auto& s : config_vars_) {
     vars.push_back(s.second.get());
   }
-  std::sort(vars.begin(), vars.end(), [](auto a, auto b)
-  {
+  std::sort(vars.begin(), vars.end(), [](auto a, auto b) {
     if (a->category() < b->category()) return true;
     if (a->category() > b->category()) return false;
     if (a->name() < b->name()) return true;
@@ -180,7 +177,8 @@ SaveStatus Config::SaveConfig() {
 void Config::LoadGameConfig(const std::string_view title_id) {
   const auto game_config_folder = Config::config_folder_ / "config";
   const auto game_config_path =
-      game_config_folder / (std::string(title_id) + Config::game_config_suffix_);
+      game_config_folder /
+      (std::string(title_id) + Config::game_config_suffix_);
   if (std::filesystem::exists(game_config_path)) {
     ReadGameConfig(game_config_path);
   }
@@ -189,7 +187,7 @@ void Config::LoadGameConfig(const std::string_view title_id) {
 cvar::IConfigVar* Config::FindConfigVarByName(const std::string& name) {
   const auto it = config_vars_.find(name);
   if (it != config_vars_.end()) {
-    return it->second.get();    
+    return it->second.get();
   }
   return nullptr;
 }
@@ -202,9 +200,9 @@ cvar::ICommandVar* Config::FindCommandVar(const std::string& name) {
   return nullptr;
 }
 
-void Config::ParseLaunchArguments(int& argc, char**& argv,
-                          const std::string_view positional_help,
-                          const std::vector<std::string>& positional_options) {
+void Config::ParseLaunchArguments(
+    int& argc, char**& argv, const std::string_view positional_help,
+    const std::vector<std::string>& positional_options) {
   options_.add_options()("help", "Prints help and exit.");
 
   for (auto& it : command_vars_) {
@@ -280,4 +278,4 @@ void Config::PrintHelpAndExit() {
   exit(0);
 }
 
-} // namespace xe
+}  // namespace xe

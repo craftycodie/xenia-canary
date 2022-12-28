@@ -27,7 +27,7 @@ std::vector<ISettingsItem*> SettingsGroup::items() const {
 
   // copy items from map to new vector
   for (const auto& [k, v] : items_) {
-      items.push_back(v.get());
+    items.push_back(v.get());
   }
 
   return items;

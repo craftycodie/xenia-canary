@@ -7,7 +7,7 @@
  ******************************************************************************
  */
 
-#if 0 // TODO:
+#if 0  // TODO:
 
 #ifndef XENIA_APP_SETTINGS_SETTINGS_BUILDER_H_
 #define XENIA_APP_SETTINGS_SETTINGS_BUILDER_H_
@@ -117,4 +117,4 @@ struct MultiChoiceSettingBuilder final
 
 #endif
 
-#endif 
+#endif

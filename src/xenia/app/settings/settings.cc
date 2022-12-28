@@ -32,7 +32,7 @@ Settings& Settings::Instance() {
 }
 
 void Settings::LoadSettingsItems() {
-    settings_["General"]->LoadSettings(); // TODO: move away from map
+  settings_["General"]->LoadSettings();  // TODO: move away from map
 }
 
 void Settings::Init() {

@@ -29,12 +29,12 @@ void XShell::BuildNav() {
 
 void XShell::BuildTabStack() {
   tab_stack_ = new QStackedLayout();
-  
-  for(XTab* tab : nav_->tabs()) {
+
+  for (XTab* tab : nav_->tabs()) {
     tab_stack_->addWidget(tab);
   }
 
-  layout_->addLayout(tab_stack_,1);
+  layout_->addLayout(tab_stack_, 1);
 }
 
 void XShell::TabChanged(XTab* tab) { tab_stack_->setCurrentWidget(tab); }

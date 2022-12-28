@@ -17,17 +17,16 @@ namespace app {
 namespace settings {
 
 class GeneralSet final : public SettingsSet {
-public:
-  explicit GeneralSet(std::string_view title)
-    : SettingsSet(title) {}
+ public:
+  explicit GeneralSet(std::string_view title) : SettingsSet(title) {}
   ~GeneralSet() override = default;
 
   void LoadSettings() override;
   void OnSettingChanged(std::string_view key,
-      const SettingsValue& value) override;
+                        const SettingsValue& value) override;
 };
 
-}
+}  // namespace settings
 }  // namespace app
 }  // namespace xe
 

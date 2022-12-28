@@ -12,7 +12,7 @@
 namespace xe {
 namespace ui {
 namespace qt {
-  
+
 using namespace xe::app::settings;
 using namespace xe::cvar;
 
@@ -22,7 +22,6 @@ SettingsComboBox::SettingsComboBox(MultiChoiceSettingsItem& item)
     : XComboBox(), item_(item) {
   assert_true(Initialize(), "Could not initialize SettingsComboBox");
 }
-
 
 bool SettingsComboBox::Initialize() {
   setMaximumWidth(kComboboxMaxWidth);
@@ -38,21 +37,19 @@ bool SettingsComboBox::Initialize() {
 
   // update selected multi-choice item when index changes
   connect(this, QOverload<int>::of(&QComboBox::currentIndexChanged),
-                     [&item = item_](int index) {
-                       item.SetSelectedItem(index);
-                     });
+          [&item = item_](int index) { item.SetSelectedItem(index); });
 
   return true;
 }
 
-//void SettingsComboBox::OnValueUpdated(const ICommandVar& var) {
-//  if (!is_value_updating_) {
-//    int index = item_.GetCurrentIndex();
-//    // emit state change on ui thread
-//    QMetaObject::invokeMethod(this, "setCurrentIndex", Qt::QueuedConnection,
-//                              Q_ARG(int, index));
-//  }
-//}
+// void SettingsComboBox::OnValueUpdated(const ICommandVar& var) {
+//   if (!is_value_updating_) {
+//     int index = item_.GetCurrentIndex();
+//     // emit state change on ui thread
+//     QMetaObject::invokeMethod(this, "setCurrentIndex", Qt::QueuedConnection,
+//                               Q_ARG(int, index));
+//   }
+// }
 
 }  // namespace qt
 }  // namespace ui

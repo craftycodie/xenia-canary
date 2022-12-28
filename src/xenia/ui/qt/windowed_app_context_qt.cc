@@ -27,7 +27,8 @@ void QtWindowedAppContext::NotifyUILoopOfPendingFunctions() {
   timer->moveToThread(main_thread);
   timer->setSingleShot(true);
 
-  // connect the timer's `timeout` method to a callback that executes pending functions
+  // connect the timer's `timeout` method to a callback that executes pending
+  // functions
   QObject::connect(timer, &QTimer::timeout, [=]() {
     // we are now in the gui thread, execute pending functions
     ExecutePendingFunctionsFromUIThread();
@@ -40,7 +41,7 @@ void QtWindowedAppContext::NotifyUILoopOfPendingFunctions() {
 }
 
 int QtWindowedAppContext::RunMainMessageLoop(QApplication& app) {
-    return app.exec();
+  return app.exec();
 }
 
 void QtWindowedAppContext::PlatformQuitFromUIThread() {
@@ -48,6 +49,6 @@ void QtWindowedAppContext::PlatformQuitFromUIThread() {
   QMetaObject::invokeMethod(qApp, "quit", Qt::QueuedConnection);
 }
 
-}
-}
-}
+}  // namespace qt
+}  // namespace ui
+}  // namespace xe

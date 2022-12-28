@@ -11,9 +11,6 @@
 
 namespace xe {
 namespace app {
-namespace settings {
-
-
-}  // namespace settings
+namespace settings {}  // namespace settings
 }  // namespace app
 }  // namespace xe
