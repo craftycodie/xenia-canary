@@ -107,9 +107,10 @@ public:
   virtual ~ValueSettingsItem() = default;
 
   ValueSettingsItem(std::string_view key, std::string_view title,
-                    std::string_view description, ValueStore<T>&& store)
+                    std::string_view description,
+                    std::unique_ptr<ValueStore<T>> store)
     : ISettingsItem(Type, key, title, description),
-      value_store_(nullptr) {}
+      value_store_(std::move(store)) {}
 
   const T& value() const { return value_store_->GetValue(); }
   void set_value(const T& value) { value_store_->SetValue(value); }
@@ -135,7 +136,8 @@ class SliderSettingsItem
 public:
   SliderSettingsItem(const std::string_view& key, const std::string_view& title,
                      const std::string_view& description,
-                     ValueStore<int32_t>&& store, int min, int max, int step)
+                     std::unique_ptr<ValueStore<int32_t>> store, int min,
+                     int max, int step)
     : ValueSettingsItem<SettingsType::Slider, int>(key, title, description,
                                                    std::move(store)),
       min_(min),
@@ -162,14 +164,14 @@ public:
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
                           std::string_view description,
-                          ValueStore<std::string>&& store,
+                          std::unique_ptr<ValueStore<std::string>> store,
                           std::initializer_list<Option> options)
     : ValueSettingsItem(key, title, description, std::move(store)),
       options_(options) {}
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
                           std::string_view description,
-                          ValueStore<std::string>&& store,
+                          std::unique_ptr<ValueStore<std::string>> store,
                           const std::vector<Option>& options)
     : ValueSettingsItem(key, title, description, std::move(store)),
       options_(options) {}

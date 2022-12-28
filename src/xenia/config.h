@@ -61,6 +61,9 @@ class Config {
    */
   cvar::IConfigVar* FindConfigVarByName(const std::string& name);
 
+  template <typename T>
+  cvar::ConfigVar<T>* FindConfigVarByName(const std::string& name);
+
   /**
    * Find a config variable that contains a pointer to a provided reference
    */
@@ -85,14 +88,16 @@ class Config {
    * Claims ownership of the provided pointer
    */
   template <typename T>
-  cvar::ConfigVar<T>* RegisterConfigVar(cvar::ConfigVar<T>* var);
+  cvar::ConfigVar<T>*
+  RegisterConfigVar(std::unique_ptr<cvar::ConfigVar<T>> var);
 
   /**
    * Register a command var to the config system
    * Claims ownership of the provided pointer
    */
   template <typename T>
-  cvar::CommandVar<T>* RegisterCommandVar(cvar::CommandVar<T>* var);
+  cvar::CommandVar<T>* RegisterCommandVar(
+      std::unique_ptr<cvar::CommandVar<T>> var);
 
  private:
   Config();
@@ -111,6 +116,11 @@ class Config {
 };
 
 template <typename T>
+cvar::ConfigVar<T>* Config::FindConfigVarByName(const std::string& name) {
+  return dynamic_cast<cvar::ConfigVar<T>*>(FindConfigVarByName(name));
+}
+
+template <typename T>
 cvar::ConfigVar<T>* Config::FindConfigVar(const T& value) {
   for (const auto& [name, var] : config_vars_) {
     auto typed_var = dynamic_cast<cvar::ConfigVar<T>*>(var.get());
@@ -124,17 +134,21 @@ cvar::ConfigVar<T>* Config::FindConfigVar(const T& value) {
 }
 
 template <typename T>
-cvar::ConfigVar<T>* Config::RegisterConfigVar(cvar::ConfigVar<T>* var) {
+cvar::ConfigVar<T>* Config::RegisterConfigVar(
+    std::unique_ptr<cvar::ConfigVar<T>> var) {
+  auto ptr = var.get();
   const std::string& name = var->name();
-  config_vars_[name] = std::unique_ptr<cvar::ConfigVar<T>>(var);
-  return dynamic_cast<cvar::ConfigVar<T>*>(config_vars_[name].get());
+  config_vars_[name] = std::move(var);
+  return ptr;
 }
 
 template <typename T>
-cvar::CommandVar<T>* Config::RegisterCommandVar(cvar::CommandVar<T>* var) {
+cvar::CommandVar<T>* Config::RegisterCommandVar(
+    std::unique_ptr<cvar::CommandVar<T>> var) {
+  auto ptr = var.get();
   const std::string& name = var->name();
-  command_vars_[name] = std::unique_ptr<cvar::CommandVar<T>>(var);
-  return dynamic_cast<cvar::CommandVar<T>*>(command_vars_[name].get());
+  command_vars_[name] = std::move(var);
+  return ptr;
 }
 
 }  // namespace xe

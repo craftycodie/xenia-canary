@@ -18,6 +18,7 @@
 #include "third_party/cpptoml/include/cpptoml.h"
 #include "third_party/cxxopts/include/cxxopts.hpp"
 #include "third_party/fmt/include/fmt/format.h"
+#include "xenia/config.h"
 #include "xenia/base/assert.h"
 #include "xenia/base/filesystem.h"
 #include "xenia/base/platform.h"
@@ -315,24 +316,6 @@ void ConfigVar<T>::ResetConfigValueToDefault() {
   SetConfigValue(this->default_value_);
 }
 
-// CVars can be initialized before these, thus initialized on-demand using new.
-extern std::map<std::string, ICommandVar*>* CmdVars;
-extern std::map<std::string, IConfigVar*>* ConfigVars;
-
-inline void AddConfigVar(IConfigVar* cv) {
-  if (!ConfigVars) {
-    ConfigVars = new std::map<std::string, IConfigVar*>;
-  }
-  ConfigVars->emplace(cv->name(), cv);
-}
-
-inline void AddCommandVar(ICommandVar* cv) {
-  if (!CmdVars) {
-    CmdVars = new std::map<std::string, ICommandVar*>;
-  }
-  CmdVars->emplace(cv->name(), cv);
-}
-
 void ParseLaunchArguments(int& argc, char**& argv,
                           const std::string_view positional_help,
                           const std::vector<std::string>& positional_options);
@@ -344,18 +327,19 @@ template <typename T>
 IConfigVar* define_configvar(const char* name, T* default_value,
                              const char* description, const char* category,
                              bool is_transient) {
-  IConfigVar* cfgvar = new ConfigVar<T>(name, default_value, description,
-                                        category, is_transient);
-  AddConfigVar(cfgvar);
-  return cfgvar;
+  auto cfgvar = std::make_unique<ConfigVar<T>>(name, default_value, description,
+                                               category, is_transient);
+  auto& cfg = xe::Config::Instance();
+  return cfg.RegisterConfigVar(std::move(cfgvar));
 }
 
 template <typename T>
 ICommandVar* define_cmdvar(const char* name, T* default_value,
                            const char* description) {
-  ICommandVar* cmdvar = new CommandVar<T>(name, default_value, description);
-  AddCommandVar(cmdvar);
-  return cmdvar;
+  auto cmdvar = std::make_unique<CommandVar<T>>(name, default_value,
+                                                description);
+  auto& cfg = xe::Config::Instance();
+  return cfg.RegisterCommandVar(std::move(cmdvar));
 }
 
 #define DEFINE_bool(name, default_value, description, category) \
@@ -666,7 +650,6 @@ private:
 #define UPDATE_from_path(name, year, month, day, utc_hour, old_default_value) \
   UPDATE_CVar(name, year, month, day, utc_hour, old_default_value,            \
               std::filesystem::path)
-
 } // namespace cvar
 } // namespace xe
 
