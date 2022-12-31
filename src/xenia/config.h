@@ -62,7 +62,7 @@ class Config {
   cvar::IConfigVar* FindConfigVarByName(const std::string& name);
 
   template <typename T>
-  cvar::ConfigVar<T>* FindConfigVarByName(const std::string& name);
+  cvar::ConfigVar<T>* FindTypedConfigVarByName(const std::string& name);
 
   /**
    * Find a config variable that contains a pointer to a provided reference
@@ -116,7 +116,7 @@ class Config {
 };
 
 template <typename T>
-cvar::ConfigVar<T>* Config::FindConfigVarByName(const std::string& name) {
+cvar::ConfigVar<T>* Config::FindTypedConfigVarByName(const std::string& name) {
   return dynamic_cast<cvar::ConfigVar<T>*>(FindConfigVarByName(name));
 }
 

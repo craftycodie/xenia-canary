@@ -17,7 +17,7 @@ namespace settings {
 
 // Settings Groups
 
-void SettingsGroup::AddSettingsItem(SettingsItemPtr&& item) {
+void SettingsGroup::AddSettingsItem(SettingsItemPtr item) {
   items_.emplace(item->key(), std::move(item));
 }
 
@@ -36,7 +36,7 @@ std::vector<ISettingsItem*> SettingsGroup::items() const {
 // Settings Sets
 
 void SettingsSet::AddSettingsItem(const std::string& group_name,
-                                  SettingsItemPtr&& item) {
+                                  SettingsItemPtr item) {
   if (groups_.find(group_name) == groups_.end()) {
     groups_[group_name] = std::make_unique<SettingsGroup>(group_name);
   }

@@ -50,21 +50,29 @@ struct ValueStore {
 
 template <typename T>
 struct RawValueStore : ValueStore<T> {
-  RawValueStore(T& location, const T& default_value)
-      : default_value_(default_value), value_(&location) {}
+  static std::unique_ptr<RawValueStore> Create(T& location,
+                                               const T& default_value) {
+    return std::unique_ptr<RawValueStore>(
+        new RawValueStore(location, default_value));
+  }
 
   const T& GetValue() const override { return *value_; }
   void SetValue(const T& value) override { *value_ = value; }
   void ResetValue() override { SetValue(default_value_); }
 
  private:
+  RawValueStore(T& location, const T& default_value)
+      : default_value_(default_value), value_(&location) {}
+
   T default_value_;
   T* value_;
 };
 
 template <typename T>
 struct CvarValueStore : ValueStore<T> {
-  CvarValueStore(cvar::ConfigVar<T>& cvar) : cvar_(&cvar) {}
+  static std::unique_ptr<CvarValueStore> Create(cvar::ConfigVar<T>& cvar) {
+    return std::unique_ptr<CvarValueStore>(new CvarValueStore(cvar));
+  }
 
   const T& GetValue() const override { return *cvar_->current_value(); }
   void SetValue(const T& value) override { cvar_->SetConfigValue(value); }

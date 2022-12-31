@@ -20,12 +20,12 @@ namespace settings {
 
 void GeneralSet::LoadSettings() {
   cvar::ConfigVar<bool>* discord_cvar =
-      Config::Instance().FindConfigVarByName<bool>("discord");
+      Config::Instance().FindTypedConfigVarByName<bool>("discord");
 
   if (discord_cvar) {
-    auto store = std::make_unique<CvarValueStore<bool>>(*discord_cvar);
     auto test_switch = std::make_unique<SwitchSettingsItem>(
-        "test", "Test Switch", "A test switch", std::move(store));
+        "test", "Test Switch", "A test switch",
+        CvarValueStore<bool>::Create(*discord_cvar));
 
     AddSettingsItem("General Settings", std::move(test_switch));
   }

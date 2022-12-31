@@ -29,7 +29,7 @@ class SettingsGroup {
   const std::string& title() const { return title_; }
   std::vector<ISettingsItem*> items() const;
 
-  void AddSettingsItem(SettingsItemPtr&& item);
+  void AddSettingsItem(SettingsItemPtr item);
 
  private:
   std::string title_;
@@ -63,7 +63,7 @@ class SettingsSet {
   std::vector<SettingsGroup*> GetSettingsGroups() const;
 
  protected:
-  void AddSettingsItem(const std::string& group_name, SettingsItemPtr&& item);
+  void AddSettingsItem(const std::string& group_name, SettingsItemPtr item);
 
  private:
   std::string title_;
