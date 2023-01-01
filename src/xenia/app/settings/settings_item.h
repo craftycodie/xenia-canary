@@ -79,6 +79,7 @@ struct CvarValueStore : ValueStore<T> {
   void ResetValue() override { cvar_->ResetConfigValueToDefault(); }
 
  private:
+  CvarValueStore(cvar::ConfigVar<T>& cvar) : cvar_(&cvar) {}
   cvar::ConfigVar<T>* cvar_;
 };
 
@@ -160,33 +161,66 @@ class SliderSettingsItem
   int step_;
 };
 
-class MultiChoiceSettingsItem
-    : public ValueSettingsItem<SettingsType::MultiChoice, std::string> {
+class IMultiChoiceSettingsItem : public ISettingsItem {
  public:
+  virtual ~IMultiChoiceSettingsItem() = default;
+  /**
+   * @return the string titles of all available options for this multi-choice
+   * item
+   */
+  virtual std::vector<std::string> option_names() const = 0;
+
+  /**
+   * @return the index of the current selection
+   */
+  virtual unsigned int current_index() const = 0;
+
+  /**
+   * Sets the currently selected item based on its item index
+   * @param index the index of the item to set
+   * @return whether setting this item was successful
+   */
+  virtual bool set_selection(unsigned int index) = 0;
+
+  /**
+   * @return the std::type_info for the target value type this multi-choice item
+   * supports
+   */
+  virtual const std::type_info& target_type() const = 0;
+
+ protected:
+  IMultiChoiceSettingsItem(std::string_view key, std::string_view title,
+                           std::string_view description)
+      : ISettingsItem(SettingsType::MultiChoice, key, title, description) {}
+};
+
+template <typename T>
+class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
+ public:
+  using ValueType = T;
+
   struct Option {
-    std::string value;
+    T value;
     std::string title;
   };
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
                           std::string_view description,
-                          std::unique_ptr<ValueStore<std::string>> store,
+                          std::unique_ptr<ValueStore<T>> store,
                           std::initializer_list<Option> options)
-      : ValueSettingsItem(key, title, description, std::move(store)),
+      : IMultiChoiceSettingsItem(key, title, description),
+        value_store_(std::move(store)),
         options_(options) {}
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
                           std::string_view description,
-                          std::unique_ptr<ValueStore<std::string>> store,
+                          std::unique_ptr<ValueStore<T>> store,
                           const std::vector<Option>& options)
-      : ValueSettingsItem(key, title, description, std::move(store)),
+      : IMultiChoiceSettingsItem(key, title, description),
+        value_store_(std::move(store)),
         options_(options) {}
 
-  /**
-   * @return the string titles of all available options for this multi-choice
-   * item
-   */
-  std::vector<std::string> GetOptionNames() const {
+  std::vector<std::string> option_names() const override {
     std::vector<std::string> option_names;
     option_names.reserve(options_.size());
 
@@ -198,15 +232,9 @@ class MultiChoiceSettingsItem
     return option_names;
   }
 
-  /**
-   * @return the index of the current selection
-   */
-  unsigned int GetCurrentIndex() const { return selection_; }
+  unsigned int current_index() const override { return selection_; }
 
-  /**
-   * @return the current selected item, or null
-   */
-  const Option* GetSelectedItem() const {
+  const Option* current_selection() const {
     if (selection_ >= options_.size()) {
       assert_always("Selection outside of options bounds");
       return nullptr;
@@ -215,12 +243,7 @@ class MultiChoiceSettingsItem
     return &options_.at(selection_);
   }
 
-  /**
-   * Sets the currently selected item based on its item index
-   * @param index the index of the item to set
-   * @return whether setting this item was successful
-   */
-  bool SetSelectedItem(unsigned int index) {
+  bool set_selection(unsigned int index) override {
     if (index >= options_.size()) {
       assert_always("Provided index outside of options bounds");
       return false;
@@ -228,14 +251,26 @@ class MultiChoiceSettingsItem
 
     selection_ = index;
 
-    set_value(options_[index].value);
+    value_store_->SetValue(options_[index].value);
     return true;
   }
 
+  const std::type_info& target_type() const override {
+    return typeid(T);
+  }
+
  private:
+  void SetInitialIndex() {
+    const T& default_value = value_store_->GetDefaultValue();
+  }
+
+  std::unique_ptr<ValueStore<T>> value_store_;
   std::vector<Option> options_;
   unsigned int selection_ = 0;
 };
+
+using StringMultiChoiceSettingsItem = MultiChoiceSettingsItem<std::string>;
+using IntMultiChoiceSettingsItem = MultiChoiceSettingsItem<int32_t>;
 
 struct ActionSettingsItem : ISettingsItem {
   ActionSettingsItem(std::string_view key, std::string_view title,
@@ -387,24 +422,24 @@ struct ActionSettingsItem : ISettingsItem {
 //   * @return the string titles of all available options for this multi-choice
 //   item
 //   */
-//  virtual std::vector<std::string> GetOptionNames() const;
+//  virtual std::vector<std::string> option_names() const;
 //
 //  /**
 //   * @return the index of the current selection
 //   */
-//  virtual unsigned int GetCurrentIndex() const;
+//  virtual unsigned int current_index() const;
 //
 //  /**
 //   * @return the current selected item, or null
 //   */
-//  virtual const Option* GetSelectedItem() const;
+//  virtual const Option* current_selection() const;
 //
 //  /**
 //   * Sets the currently selected item based on its item index
 //   * @param index the index of the item to set
 //   * @return whether setting this item was successful
 //   */
-//  virtual bool SetSelectedItem(unsigned int index);
+//  virtual bool set_selection(unsigned int index);
 //
 // protected:
 //  // don't use SetValue for multi choice settings

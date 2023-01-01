@@ -35,7 +35,7 @@ class SettingsWidgetFactory {
   QWidget* CreatePathInputWidget(PathInputSettingsItem& item);
   QWidget* CreateNumberInputWidget(NumberInputSettingsItem& item);
   QWidget* CreateRangeInputWidget(SliderSettingsItem& item);
-  QWidget* CreateMultiChoiceWidget(MultiChoiceSettingsItem& item);
+  QWidget* CreateMultiChoiceWidget(IMultiChoiceSettingsItem& item);
   QWidget* CreateActionWidget(ActionSettingsItem& item);
 
   QWidget* CreateWidgetContainer(QWidget* target);

@@ -25,13 +25,12 @@ class SettingsComboBox : public XComboBox {
   Q_OBJECT
 
  public:
-  explicit SettingsComboBox(MultiChoiceSettingsItem& item);
+  explicit SettingsComboBox(IMultiChoiceSettingsItem& item);
 
   bool Initialize();
 
  private:
-  MultiChoiceSettingsItem& item_;
-  std::atomic_bool is_value_updating_ = false;
+  IMultiChoiceSettingsItem& item_;
 };
 
 }  // namespace qt

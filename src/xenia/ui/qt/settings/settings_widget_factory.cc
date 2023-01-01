@@ -87,7 +87,7 @@ QWidget* SettingsWidgetFactory::CreateWidgetForSettingsItem(
       }
       case SettingsType::MultiChoice: {
         return CreateMultiChoiceWidget(
-            dynamic_cast<MultiChoiceSettingsItem&>(item));
+            dynamic_cast<IMultiChoiceSettingsItem&>(item));
         break;
       }
       case SettingsType::Action: {
@@ -186,7 +186,7 @@ QWidget* SettingsWidgetFactory::CreateRangeInputWidget(
 }
 
 QWidget* SettingsWidgetFactory::CreateMultiChoiceWidget(
-    MultiChoiceSettingsItem& item) {
+    IMultiChoiceSettingsItem& item) {
   QWidget* ctr = new QWidget();
   QHBoxLayout* ctr_layout = new QHBoxLayout();
   ctr_layout->setContentsMargins(0, 0, 0, 0);
