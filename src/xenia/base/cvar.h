@@ -61,6 +61,7 @@ class CommandVar : virtual public ICommandVar {
   CommandVar<T>(const char* name, T* default_value, const char* description);
   const std::string& name() const override;
   const std::string& description() const override;
+  const T& default_value() const { return default_value_; }
   void AddToLaunchOptions(cxxopts::Options* options) override;
   void LoadFromLaunchOptions(cxxopts::ParseResult* result) override;
   void SetCommandLineValue(T val);

@@ -43,6 +43,7 @@ template <typename T>
 struct ValueStore {
   virtual ~ValueStore() = default;
 
+  virtual const T& GetDefaultValue() const = 0;
   virtual const T& GetValue() const = 0;
   virtual void SetValue(const T& value) = 0;
   virtual void ResetValue() = 0;
@@ -56,6 +57,7 @@ struct RawValueStore : ValueStore<T> {
         new RawValueStore(location, default_value));
   }
 
+  const T& GetDefaultValue() const override { return default_value_; }
   const T& GetValue() const override { return *value_; }
   void SetValue(const T& value) override { *value_ = value; }
   void ResetValue() override { SetValue(default_value_); }
@@ -74,6 +76,7 @@ struct CvarValueStore : ValueStore<T> {
     return std::unique_ptr<CvarValueStore>(new CvarValueStore(cvar));
   }
 
+  const T& GetDefaultValue() const override { return cvar_->default_value(); }
   const T& GetValue() const override { return *cvar_->current_value(); }
   void SetValue(const T& value) override { cvar_->SetConfigValue(value); }
   void ResetValue() override { cvar_->ResetConfigValueToDefault(); }
