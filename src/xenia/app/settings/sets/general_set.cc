@@ -19,15 +19,36 @@ namespace app {
 namespace settings {
 
 void GeneralSet::LoadSettings() {
-  cvar::ConfigVar<bool>* discord_cvar =
-      Config::Instance().FindTypedConfigVarByName<bool>("discord");
+#define FIND_CVAR(name) auto cvar_##name = config.FindConfigVarByName(##name)
+#define FIND_TYPED_CVAR(name, type) \
+  auto cvar_##name = config.FindTypedConfigVarByName<type>(#name)
 
-  if (discord_cvar) {
+  auto& config = Config::Instance();
+
+  FIND_TYPED_CVAR(discord, bool);
+  FIND_TYPED_CVAR(gpu, std::string);
+
+  if (cvar_discord) {
     auto test_switch = std::make_unique<SwitchSettingsItem>(
         "test", "Test Switch", "A test switch",
-        CvarValueStore<bool>::Create(*discord_cvar));
+        CvarValueStore<bool>::Create(*cvar_discord));
 
     AddSettingsItem("General Settings", std::move(test_switch));
+  }
+
+  if (cvar_gpu) {
+    using FieldType = MultiChoiceSettingsItem<std::string>;
+
+    std::vector<FieldType::Option> options = {{"any", "Any"},
+                                              {"d3d12", "Direct3D 12"},
+                                              {"vulkan", "Vulkan"},
+                                              {"null", "Null"}};
+
+    auto field = std::make_unique<FieldType>(
+        "gpu", "Graphics System", "Choose the graphics impl.",
+        CvarValueStore<std::string>::Create(*cvar_gpu), options);
+
+    AddSettingsItem("General Settings", std::move(field));
   }
 }
 
