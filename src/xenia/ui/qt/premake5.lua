@@ -13,8 +13,11 @@ project("xenia-ui-qt")
   qtmodules{"core", "gui", "widgets"}
   qtprefix "Qt5"
 
-  filter("configurations:Debug")
+  filter "configurations:Debug"
     qtsuffix "d"
+  filter "configurations:Checked"
+    qtsuffix "d"
+  filter {}
 
   links({
     "xenia-base",
@@ -28,7 +31,8 @@ project("xenia-ui-qt")
   removefiles({
     "qt_demoapp.cc",
   })
-  
+ 
+group("src")
 project("xenia-ui-qt-demoapp")
   uuid("b46e0512-b0cb-4a02-90c6-c23db81c6de3")
   kind("WindowedApp")
@@ -39,11 +43,12 @@ project("xenia-ui-qt-demoapp")
   qt.enable()
   qtmodules{"core", "gui", "widgets"}
   qtprefix "Qt5"
-  qtsuffix "d"
-  -- filter("configurations:Debug")
-  --   qtsuffix "d"
-  -- filter("configurations:Checked")
-  --   qtsuffix "d"
+
+  filter "configurations:Debug"
+    qtsuffix "d"
+  filter "configurations:Checked"
+    qtsuffix "d"
+  filter {}
   
   links({
     "xenia-base",
