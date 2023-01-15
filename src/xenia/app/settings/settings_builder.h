@@ -7,8 +7,6 @@
  ******************************************************************************
  */
 
-#if 0  // TODO:
-
 #ifndef XENIA_APP_SETTINGS_SETTINGS_BUILDER_H_
 #define XENIA_APP_SETTINGS_SETTINGS_BUILDER_H_
 
@@ -18,103 +16,135 @@ namespace xe {
 namespace app {
 namespace settings {
 
-// Switch, TextInput, PathInput, NumberInput, Slider, MultiChoice, Action,
-// Custom,
-//   UNKNOWN = 0xFF
+template <typename TDerived>
+struct SettingsBuilder {
+  TDerived& key(std::string_view key) {
+    key_ = key;
+    return static_cast<TDerived&>(*this);
+  }
 
-// class SwitchSettingBuilder;
-// class TextInputSettingBuilder;
-// class PathInputSettingBuilder;
-// class NumberInputSettingBuilder;
+  TDerived& title(std::string_view title) {
+    title_ = title;
+    return static_cast<TDerived&>(*this);
+  }
 
-// Abstract builder uses CRTP to allow for inheritance
+  TDerived& description(std::string_view desc) {
+    description_ = desc;
+    return static_cast<TDerived&>(*this);
+  }
 
-template <typename T>
-class AbstractBuilder;
+  std::unique_ptr<ISettingsItem> Build() {
+    return static_cast<TDerived*>(this)->BuildImpl();
+  }
 
-// Builder templates
+  bool IsValid() const {
+    return !(key_.empty() || title_.empty() || description_.empty());
+  }
 
-template <class TBuilder>
-class AbstractBuilder {
-  static_assert(std::is_base_of_v<AbstractBuilder<TBuilder>, TBuilder>,
-                "Provided builder type not a builder");
+ protected:
+  std::string_view key_;
+  std::string_view title_;
+  std::string_view description_;
+};
 
- public:
-  TBuilder& title(std::string_view title) {
+template <typename TDerived, typename TTarget>
+struct ValueStoreSettingsBuilder : SettingsBuilder<TDerived> {
+  using Super = SettingsBuilder<TDerived>;
+  using ValueType = typename TTarget::ValueType;
+
+  TDerived& valueStore(std::unique_ptr<ValueStore<ValueType>> store) {
+    value_store_ = std::move(store);
+    return static_cast<TDerived&>(*this);
+  }
+
+  bool IsValid() const { return value_store_ != nullptr && Super::IsValid(); }
+
+ protected:
+  std::unique_ptr<ValueStore<ValueType>> value_store_;
+};
+
+template <typename TDerived, typename TTarget>
+struct ValueSettingsBuilder : ValueStoreSettingsBuilder<TDerived, TTarget> {
+  std::unique_ptr<ISettingsItem> BuildImpl() {
+    bool valid = this->IsValid();
+    assert_true(valid, "Unset fields or invalid state for this builder");
+    return valid ? std::make_unique<TTarget>(this->key_, this->title_,
+                                             this->description_,
+                                             std::move(this->value_store_))
+                 : nullptr;
+  }
+};
+
+struct SliderBuilder
+    : ValueStoreSettingsBuilder<SliderBuilder, SliderSettingsItem> {
+  using Super = ValueStoreSettingsBuilder<SliderBuilder, SliderSettingsItem>;
+
+  SliderBuilder& min(int min) {
+    min_ = min;
     return *this;
   }
-  TBuilder& description(std::string_view description);
-  TBuilder& group(std::string_view group);
 
-protected:
+  SliderBuilder& max(int max) {
+    max_ = max;
+    return *this;
+  }
 
+  SliderBuilder& step(int step) {
+    step_ = step;
+    return *this;
+  }
+
+  std::unique_ptr<ISettingsItem> BuildImpl() {
+    bool valid = IsValid();
+    assert_true(valid, "Unset fields or invalid state for this builder");
+    return valid ? std::make_unique<SliderSettingsItem>(
+                       key_, title_, description_, std::move(value_store_),
+                       min_, max_, step_)
+                 : nullptr;
+  }
+
+  bool IsValid() const { return step_ != 0 && Super::IsValid(); }
+
+ protected:
+  int min_ = 0;
+  int max_ = 0;
+  int step_ = 0;
 };
 
-template <typename TValueType, class TBuilder>
-struct BasicSettingBuilder
-    : public AbstractBuilder<BasicSettingBuilder<TValueType, TBuilder>> {
-  TBuilder& default_value(TValueType default_value);
-  TBuilder& value(TValueType value);
+template <typename T>
+struct MultiChoiceBuilder
+    : ValueStoreSettingsBuilder<MultiChoiceBuilder<T>,
+                                MultiChoiceSettingsItem<T>> {
+  using Super = ValueStoreSettingsBuilder<MultiChoiceBuilder<T>,
+                                          MultiChoiceSettingsItem<T>>;
+  using OptionType = typename MultiChoiceSettingsItem<T>::Option;
+
+  MultiChoiceBuilder& option(std::string_view title, const T& value) {
+    options_.push_back(OptionType{value, std::string(title)});
+    return *this;
+  }
+
+  std::unique_ptr<ISettingsItem> BuildImpl() {
+    bool valid = IsValid();
+    assert_true(valid, "Unset fields or invalid state for this builder");
+    return valid ? std::make_unique<MultiChoiceSettingsItem<T>>(
+                       this->key_, this->title_, this->description_,
+                       std::move(this->value_store_), options_)
+                 : nullptr;
+  }
+
+  bool IsValid() const { return !options_.empty() && Super::IsValid(); }
+
+ protected:
+  std::vector<OptionType> options_;
 };
 
-template <typename TValueType, class TBuilder>
-struct NumberInputSettingBuilder
-    : public BasicSettingBuilder<TValueType, TBuilder> {
- public:
-  TBuilder& min(TValueType min);
-  TBuilder& max(TValueType max);
-  TBuilder& step(TValueType step);
-};
-
-// Builder impls
-
-struct SwitchSettingBuilder final
-    : public BasicSettingBuilder<bool, SwitchSettingBuilder> {
-};
-
-struct TextInputSettingBuilder final
-    : public BasicSettingBuilder<std::string, TextInputSettingBuilder> {
-};
-
-struct PathInputSettingBuilder final
-    : public BasicSettingBuilder<std::filesystem::path,
-                                 PathInputSettingBuilder> {
- public:
-  PathInputSettingBuilder& require_valid_path(bool value);
-};
-
-struct IntegerInputSettingBuilder final
-    : public NumberInputSettingBuilder<int32_t, IntegerInputSettingBuilder> {
- public:
-};
-
-struct DoubleInputSettingBuilder final
-    : public NumberInputSettingBuilder<double, DoubleInputSettingBuilder> {
- public:
-};
-
-struct IntegerRangeSettingBuilder final
-    : public NumberInputSettingBuilder<int32_t, IntegerRangeSettingBuilder> {
- public:
-};
-
-struct DoubleRangeSettingBuilder final
-    : public NumberInputSettingBuilder<int32_t, DoubleRangeSettingBuilder> {
- public:
-};
-
-template <typename TValueType>
-struct MultiChoiceSettingBuilder final
-    : public AbstractBuilder<MultiChoiceSettingBuilder<TValueType>> {
- public:
-  MultiChoiceSettingBuilder& add_item(std::string_view title, TValueType value,
-                                     bool default_value = false);
+struct SwitchBuilder : ValueSettingsBuilder<SwitchBuilder, SwitchSettingsItem> {
+  SwitchBuilder() = default;
 };
 
 }  // namespace settings
 }  // namespace app
 }  // namespace xe
-
-#endif
 
 #endif
