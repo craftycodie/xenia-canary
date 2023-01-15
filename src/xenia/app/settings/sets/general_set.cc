@@ -20,7 +20,7 @@ namespace app {
 namespace settings {
 
 void GeneralSet::LoadSettings() {
-#define FIND_CVAR(name) auto cvar_##name = config.FindConfigVarByName(##name)
+#define FIND_CVAR(name) auto cvar_##name = config.FindConfigVarByName(#name)
 #define FIND_TYPED_CVAR(name, type) \
   auto cvar_##name = config.FindTypedConfigVarByName<type>(#name)
 
