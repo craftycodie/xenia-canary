@@ -18,7 +18,8 @@ using namespace xe::cvar;
 
 SettingsCheckBox::SettingsCheckBox(SwitchSettingsItem& item)
     : XCheckBox(item.title().c_str()), item_(item) {
-  assert_true(Initialize(), "Could not initialize SettingsCheckBox");
+  bool success = Initialize();
+  assert_true(success, "Could not initialize SettingsCheckBox");
 }
 
 SettingsCheckBox::~SettingsCheckBox() {}

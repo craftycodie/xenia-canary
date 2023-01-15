@@ -20,7 +20,8 @@ const int kComboboxMaxWidth = 120;
 
 SettingsComboBox::SettingsComboBox(IMultiChoiceSettingsItem& item)
     : XComboBox(), item_(item) {
-  assert_true(Initialize(), "Could not initialize SettingsComboBox");
+  bool success = Initialize();
+  assert_true(success, "Could not initialize SettingsComboBox");
 }
 
 bool SettingsComboBox::Initialize() {

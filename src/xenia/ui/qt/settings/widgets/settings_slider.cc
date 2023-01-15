@@ -18,7 +18,8 @@ using namespace xe::cvar;
 
 SettingsSlider::SettingsSlider(SliderSettingsItem& item)
     : XSlider(), item_(item) {
-  assert_true(Initialize(), "Could not initialize SettingsSlider");
+  bool success = Initialize();
+  assert_true(success, "Could not initialize SettingsSlider");
 }
 
 bool SettingsSlider::Initialize() {

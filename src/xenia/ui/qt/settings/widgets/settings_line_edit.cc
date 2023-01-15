@@ -20,12 +20,14 @@ const int kLineEditMaxWidth = 480;
 
 SettingsLineEdit::SettingsLineEdit(TextInputSettingsItem& item)
     : XLineEdit(), item_(item) {
-  assert_true(Initialize(), "Could not initialize SettingsLineEdit");
+  bool success = Initialize();
+  assert_true(success, "Could not initialize SettingsLineEdit");
 }
 
 SettingsLineEdit::SettingsLineEdit(PathInputSettingsItem& item)
     : XLineEdit(), item_(item) {
-  assert_true(Initialize(), "Could not initialize SettingsLineEdit");
+  bool success = Initialize();
+  assert_true(success, "Could not initialize SettingsLineEdit");
 }
 
 bool SettingsLineEdit::Initialize() {
