@@ -17,7 +17,6 @@
 #include <variant>
 #include <vector>
 
-#include "settings_set.h"
 #include "xenia/base/assert.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/delegate.h"
@@ -26,6 +25,7 @@
 namespace xe {
 namespace app {
 namespace settings {
+class SettingsSet;
 
 enum class SettingsType : uint8_t {
   Switch,
@@ -45,8 +45,8 @@ struct ValueStore {
 
   virtual const T& GetDefaultValue() const = 0;
   virtual const T& GetValue() const = 0;
-  virtual void SetValue(const T& value) = 0;
-  virtual void ResetValue() = 0;
+  virtual bool SetValue(const T& value) = 0;
+  virtual bool ResetValue() = 0;
 };
 
 template <typename T>
@@ -59,8 +59,8 @@ struct RawValueStore : ValueStore<T> {
 
   const T& GetDefaultValue() const override { return default_value_; }
   const T& GetValue() const override { return *value_; }
-  void SetValue(const T& value) override { *value_ = value; }
-  void ResetValue() override { SetValue(default_value_); }
+  bool SetValue(const T& value) override { return *value_ = value; }
+  bool ResetValue() override { return SetValue(default_value_); }
 
  private:
   RawValueStore(T& location, const T& default_value)
@@ -78,35 +78,43 @@ struct CvarValueStore : ValueStore<T> {
 
   const T& GetDefaultValue() const override { return cvar_->default_value(); }
   const T& GetValue() const override { return *cvar_->current_value(); }
-  void SetValue(const T& value) override { cvar_->SetConfigValue(value); }
-  void ResetValue() override { cvar_->ResetConfigValueToDefault(); }
+  bool SetValue(const T& value) override {
+    cvar_->SetConfigValue(value);
+    return true;
+  }
+  bool ResetValue() override {
+    cvar_->ResetConfigValueToDefault();
+    return true;
+  }
 
  private:
   CvarValueStore(cvar::ConfigVar<T>& cvar) : cvar_(&cvar) {}
+
   cvar::ConfigVar<T>* cvar_;
 };
 
 class ISettingsItem {
  public:
   ISettingsItem(SettingsType type, std::string_view key, std::string_view title,
-                std::string_view description)
+                std::string_view description, SettingsSet& owning_set)
       : settings_type_(type),
         key_(key),
         title_(title),
-        description_(description) {}
-
-  virtual ~ISettingsItem() = default;
+        description_(description),
+        owning_set_(owning_set) {}
 
   SettingsType settings_type() const { return settings_type_; }
   const std::string& key() const { return key_; }
   const std::string& title() const { return title_; }
   const std::string& description() const { return description_; }
+  SettingsSet& owner() { return owning_set_; }
 
  private:
   SettingsType settings_type_;
   std::string key_;
   std::string title_;
   std::string description_;
+  SettingsSet& owning_set_;
 };
 
 template <SettingsType Type, typename T>
@@ -117,13 +125,17 @@ class ValueSettingsItem : public ISettingsItem {
   virtual ~ValueSettingsItem() = default;
 
   ValueSettingsItem(std::string_view key, std::string_view title,
-                    std::string_view description,
+                    std::string_view description, SettingsSet& owning_set,
                     std::unique_ptr<ValueStore<T>> store)
-      : ISettingsItem(Type, key, title, description),
+      : ISettingsItem(Type, key, title, description, owning_set),
         value_store_(std::move(store)) {}
 
-  const T& value() const { return value_store_->GetValue(); }
-  void set_value(const T& value) { value_store_->SetValue(value); }
+  virtual const T& value() const { return value_store_->GetValue(); }
+  virtual bool set_value(const T& value) {
+    return validate(value) && value_store_->SetValue(value);
+  }
+
+  virtual bool validate(const T& value) const { return true; }
 
  private:
   std::unique_ptr<ValueStore<T>> value_store_;
@@ -135,21 +147,69 @@ class ValueSettingsItem : public ISettingsItem {
 
 DECLARE_SETTINGS_ITEM(Switch, bool);
 
-DECLARE_SETTINGS_ITEM(TextInput, std::string);
-
-DECLARE_SETTINGS_ITEM(PathInput, std::filesystem::path);
-
 DECLARE_SETTINGS_ITEM(NumberInput, int64_t);
+
+class TextInputSettingsItem
+    : public ValueSettingsItem<SettingsType::TextInput, std::string> {
+ public:
+  TextInputSettingsItem(const std::string_view& key,
+                        const std::string_view& title,
+                        const std::string_view& description,
+                        SettingsSet& owning_set,
+                        std::unique_ptr<ValueStore<std::string>> store,
+                        bool accept_empty_values = true)
+      : ValueSettingsItem<SettingsType::TextInput, std::string>(
+            key, title, description, owning_set, std::move(store)),
+        accept_empty_values_(accept_empty_values) {}
+
+  bool validate(const std::string& value) const override {
+    if (value.empty() && !accept_empty_values_) {
+      return false;
+    }
+
+    return true;
+  }
+
+ private:
+  bool accept_empty_values_;
+};
+
+class PathInputSettingsItem
+    : public ValueSettingsItem<SettingsType::PathInput, std::filesystem::path> {
+ public:
+  PathInputSettingsItem(
+      const std::string_view& key, const std::string_view& title,
+      const std::string_view& description, SettingsSet& owning_set,
+      std::unique_ptr<ValueStore<std::filesystem::path>> store,
+      bool require_valid_path = true)
+      : ValueSettingsItem<SettingsType::PathInput, std::filesystem::path>(
+            key, title, description, owning_set, std::move(store)),
+        require_valid_path_(require_valid_path) {}
+
+  bool validate(const std::filesystem::path& value) const override {
+    if (require_valid_path_) {
+      if (!std::filesystem::exists(value)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+ private:
+  bool require_valid_path_;
+};
 
 class SliderSettingsItem
     : public ValueSettingsItem<SettingsType::Slider, int32_t> {
  public:
   SliderSettingsItem(const std::string_view& key, const std::string_view& title,
                      const std::string_view& description,
+                     SettingsSet& owning_set,
                      std::unique_ptr<ValueStore<int32_t>> store, int min,
                      int max, int step)
-      : ValueSettingsItem<SettingsType::Slider, int>(key, title, description,
-                                                     std::move(store)),
+      : ValueSettingsItem<SettingsType::Slider, int>(
+            key, title, description, owning_set, std::move(store)),
         min_(min),
         max_(max),
         step_(step) {}
@@ -193,8 +253,10 @@ class IMultiChoiceSettingsItem : public ISettingsItem {
 
  protected:
   IMultiChoiceSettingsItem(std::string_view key, std::string_view title,
-                           std::string_view description)
-      : ISettingsItem(SettingsType::MultiChoice, key, title, description) {}
+                           std::string_view description,
+                           SettingsSet& owning_set)
+      : ISettingsItem(SettingsType::MultiChoice, key, title, description,
+                      owning_set) {}
 };
 
 template <typename T>
@@ -208,18 +270,18 @@ class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
   };
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
-                          std::string_view description,
+                          std::string_view description, SettingsSet& owning_set,
                           std::unique_ptr<ValueStore<T>> store,
                           std::initializer_list<Option> options)
-      : IMultiChoiceSettingsItem(key, title, description),
+      : IMultiChoiceSettingsItem(key, title, description, owning_set),
         value_store_(std::move(store)),
         options_(options) {}
 
   MultiChoiceSettingsItem(std::string_view key, std::string_view title,
-                          std::string_view description,
+                          std::string_view description, SettingsSet& owning_set,
                           std::unique_ptr<ValueStore<T>> store,
                           const std::vector<Option>& options)
-      : IMultiChoiceSettingsItem(key, title, description),
+      : IMultiChoiceSettingsItem(key, title, description, owning_set),
         value_store_(std::move(store)),
         options_(options) {}
 
@@ -258,13 +320,12 @@ class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
     return true;
   }
 
-  const std::type_info& target_type() const override {
-    return typeid(T);
-  }
+  const std::type_info& target_type() const override { return typeid(T); }
 
  private:
   void SetInitialIndex() {
     const T& default_value = value_store_->GetDefaultValue();
+    // TODO:
   }
 
   std::unique_ptr<ValueStore<T>> value_store_;
@@ -277,187 +338,17 @@ using IntMultiChoiceSettingsItem = MultiChoiceSettingsItem<int32_t>;
 
 struct ActionSettingsItem : ISettingsItem {
   ActionSettingsItem(std::string_view key, std::string_view title,
-                     std::string_view description)
-      : ISettingsItem(SettingsType::Action, key, title, description) {}
+                     std::string_view description, SettingsSet& owning_set,
+                     std::function<void()> handler)
+      : ISettingsItem(SettingsType::Action, key, title, description,
+                      owning_set),
+        handler_(std::move(handler)) {}
+
+  void Trigger() { handler_(); }
+
+ private:
+  std::function<void()> handler_;
 };
-
-// class SwitchSettingsItem : ValueSettingsItem<SettingsType::Switch, bool> {
-//   SwitchSettingsItem(std::string_view key, std::string_view title,
-//                      std::string_view description, bool& value,
-//                      const bool& default_value = false)
-//     : ValueSettingsItem<SettingsType::Switch, bool>(
-//         key, title, description, value, default_value) {}
-// };
-
-//
-// class SettingsValue {
-//  using ValueStore =
-//      std::variant<std::monostate, int32_t, int64_t, uint32_t, uint64_t, bool,
-//                   double, std::string, std::filesystem::path>;
-//
-// public:
-//  SettingsValue(bool value) : value_(value) {}
-//  SettingsValue(int32_t value) : value_(value) {}
-//  SettingsValue(int64_t value) : value_(value) {}
-//  SettingsValue(uint32_t value) : value_(value) {}
-//  SettingsValue(uint64_t value) : value_(value) {}
-//  SettingsValue(double value) : value_(value) {}
-//  SettingsValue(const std::string& value) : value_(value) {}
-//  SettingsValue(const std::filesystem::path& value) : value_(value) {}
-//  SettingsValue() : value_(std::monostate{}) {}
-//
-//  template <typename T>
-//  bool is() const {
-//    return std::holds_alternative<T>(value_);
-//  }
-//
-//  template <typename T>
-//  bool as(T& out) const {
-//    const T* ptr = std::get_if<T>(&value_);
-//    if (ptr) out = *ptr;
-//    return !!ptr;
-//  }
-//
-// private:
-//  ValueStore value_;
-//};
-//
-// struct ISettingsItem {
-//  virtual ~ISettingsItem() = default;
-//
-//  SettingsType settings_type() const { return settings_type_; }
-//  const std::string& key() const { return key_; }
-//  const std::string& title() const { return title_; }
-//  const std::string& description() const { return description_; }
-//
-//  virtual SettingsValue GetValue() const { return value_; }
-//
-// protected:
-//
-//
-//  virtual bool SetValue(const SettingsValue& value) {
-//    value_ = value;
-//    return true;
-//  }
-//
-//  virtual bool ResetValue() { return SetValue(default_value_); }
-//
-// private:
-//  SettingsType settings_type_;
-//  std::string key_;
-//  std::string title_;
-//  std::string description_;
-//  SettingsValue value_;
-//  const SettingsValue default_value_;
-//};
-//
-// struct SwitchSettingsItem : ISettingsItem {
-//  SwitchSettingsItem(std::string_view key, std::string_view title,
-//                     std::string_view description, bool value,
-//                     bool default_value = false);
-//
-//  bool SetValue(const SettingsValue& value) override;
-//};
-//
-// struct TextInputSettingsItem : ISettingsItem {
-//  TextInputSettingsItem(std::string_view key, std::string_view title,
-//                        std::string_view description, std::string value,
-//                        std::string default_value = "");
-//
-//  bool SetValue(const SettingsValue& value) override;
-//};
-//
-// struct PathInputSettingsItem : TextInputSettingsItem {
-//  PathInputSettingsItem(std::string_view key, std::string_view title,
-//                        std::string_view description,
-//                        std::filesystem::path value,
-//                        std::filesystem::path default_value = "",
-//                        bool require_valid_path = false);
-//
-//  bool SetValue(const SettingsValue& value) override;
-// private:
-//  bool require_valid_path_;
-//};
-//
-// struct NumberInputSettingsItem : ISettingsItem {
-//  NumberInputSettingsItem(SettingsType settings_type,
-//                          std::string_view key, std::string_view title,
-//                          std::string_view description, int value,
-//                          int min, int max,
-//                          int default_value);
-//
-//  int min() const { return min_; }
-//  int max() const { return max_; }
-//
-//  bool SetValue(const SettingsValue& setting) override;
-//
-// private:
-//  const int min_;
-//  const int max_;
-//};
-//
-// struct NumberRangeSettingsItem : NumberInputSettingsItem {
-//  NumberRangeSettingsItem(std::string_view key, std::string_view title,
-//                          std::string_view description, int value,
-//                          int min,
-//                          int max, int default_value, int step = 1);
-//
-//  int step() const { return step_; }
-//
-// private:
-//  int step_;
-//};
-//
-// struct MultiChoiceSettingsItem : ISettingsItem {
-//  struct Option {
-//    SettingsValue value;
-//    std::string title;
-//  };
-//
-//  MultiChoiceSettingsItem(std::string_view key,
-//                          std::string_view title, std::string_view
-//                          description, std::initializer_list<Option> options);
-//  MultiChoiceSettingsItem(std::string_view key,
-//                          std::string_view title, std::string_view
-//                          description, const std::vector<Option>& options);
-//
-//  /**
-//   * @return the string titles of all available options for this multi-choice
-//   item
-//   */
-//  virtual std::vector<std::string> option_names() const;
-//
-//  /**
-//   * @return the index of the current selection
-//   */
-//  virtual unsigned int current_index() const;
-//
-//  /**
-//   * @return the current selected item, or null
-//   */
-//  virtual const Option* current_selection() const;
-//
-//  /**
-//   * Sets the currently selected item based on its item index
-//   * @param index the index of the item to set
-//   * @return whether setting this item was successful
-//   */
-//  virtual bool set_selection(unsigned int index);
-//
-// protected:
-//  // don't use SetValue for multi choice settings
-//  bool SetValue(const SettingsValue& value) override;
-//
-// private:
-//  std::vector<Option> options_;
-//  unsigned int selection_ = 0;
-//};
-//
-// struct ActionSettingsItem : ISettingsItem {
-//  ActionSettingsItem(std::string_view key, std::string_view title,
-//                     std::string_view description);
-//};
-
 }  // namespace settings
 }  // namespace app
 }  // namespace xe

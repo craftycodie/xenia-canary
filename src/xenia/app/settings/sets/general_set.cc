@@ -15,39 +15,34 @@
 #include "xenia/app/settings/settings_builder.h"
 #include "xenia/app/settings/settings_item.h"
 
+#if XE_PLATFORM_WIN32
+#include <Windows.h>
+#endif
+
 namespace xe {
 namespace app {
 namespace settings {
-
 void GeneralSet::LoadSettings() {
-#define FIND_CVAR(name) auto cvar_##name = config.FindConfigVarByName(#name)
-#define FIND_TYPED_CVAR(name, type) \
-  auto cvar_##name = config.FindTypedConfigVarByName<type>(#name)
-
   namespace fs = std::filesystem;
 
-  auto& config = Config::Instance();
-
-  FIND_TYPED_CVAR(discord, bool);
-  FIND_TYPED_CVAR(gpu, std::string);
-  FIND_TYPED_CVAR(cache_root, fs::path);
-
-  if (cvar_discord) {
+  if (auto cvar_discord = FindTypedConfigVar<bool>("discord"); cvar_discord) {
     auto field = SwitchBuilder()
                      .key("test")
                      .title("Test Switch")
                      .description("A test switch")
+                     .owner(this)
                      .valueStore(CvarValueStore<bool>::Create(*cvar_discord))
                      .Build();
 
     AddSettingsItem("General Settings", std::move(field));
   }
 
-  if (cvar_gpu) {
+  if (auto cvar_gpu = FindTypedConfigVar<std::string>("gpu"); cvar_gpu) {
     auto field = MultiChoiceBuilder<std::string>()
                      .key("gpu")
                      .title("Graphics System")
                      .description("Choose the graphics impl.")
+                     .owner(this)
                      .valueStore(CvarValueStore<std::string>::Create(*cvar_gpu))
                      .option("any", "Any")
                      .option("d3d12", "Direct3D 12")
@@ -58,19 +53,38 @@ void GeneralSet::LoadSettings() {
     AddSettingsItem("General Settings", std::move(field));
   }
 
-  if (cvar_cache_root) {
-    using FieldType = PathInputSettingsItem;
-    auto field = std::make_unique<FieldType>(
-        "cache_root", "Cache Directory", "",
-        CvarValueStore<fs::path>::Create(*cvar_cache_root));
+  if (auto cvar_cache_root = FindTypedConfigVar<fs::path>("cache_root");
+      cvar_cache_root) {
+    auto field =
+        PathInputBuilder()
+            .title("Cache Directory")
+            .description("-")
+            .key("cache_root")
+            .owner(this)
+            .valueStore(CvarValueStore<fs::path>::Create(*cvar_cache_root))
+            .requireValidPath(true)
+            .Build();
 
     AddSettingsItem("Additional Settings", std::move(field));
   }
+
+  auto test_callback = []() {
+#if XE_PLATFORM_WIN32
+    MessageBox(nullptr, L"Test Alert", L"A Test Alert", 0);
+#endif
+  };
+
+  auto field = ActionBuilder()
+                   .title("test")
+                   .description("")
+                   .handler(test_callback)
+                   .Build();
+
+  AddSettingsItem("Additional Settings", std::move(field));
 }
 
 void GeneralSet::OnSettingChanged(std::string_view key,
                                   const SettingsValue& value) {}
-
 }  // namespace settings
 }  // namespace app
 }  // namespace xe

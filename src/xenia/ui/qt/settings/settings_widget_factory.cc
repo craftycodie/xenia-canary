@@ -63,35 +63,35 @@ QWidget* SettingsWidgetFactory::CreateWidgetForSettingsItem(
   try {
     switch (item.settings_type()) {
       case SettingsType::Switch: {
-        return CreateCheckBoxWidget(dynamic_cast<SwitchSettingsItem&>(item));
+        return CreateCheckBoxWidget(static_cast<SwitchSettingsItem&>(item));
         break;
       }
       case SettingsType::TextInput: {
         return CreateTextInputWidget(
-            dynamic_cast<TextInputSettingsItem&>(item));
+            static_cast<TextInputSettingsItem&>(item));
         break;
       }
       case SettingsType::PathInput: {
         return CreatePathInputWidget(
-            dynamic_cast<PathInputSettingsItem&>(item));
+            static_cast<PathInputSettingsItem&>(item));
         break;
       }
       case SettingsType::NumberInput: {
         return CreateNumberInputWidget(
-            dynamic_cast<NumberInputSettingsItem&>(item));
+            static_cast<NumberInputSettingsItem&>(item));
         break;
       }
       case SettingsType::Slider: {
-        return CreateRangeInputWidget(dynamic_cast<SliderSettingsItem&>(item));
+        return CreateRangeInputWidget(static_cast<SliderSettingsItem&>(item));
         break;
       }
       case SettingsType::MultiChoice: {
         return CreateMultiChoiceWidget(
-            dynamic_cast<IMultiChoiceSettingsItem&>(item));
+            static_cast<IMultiChoiceSettingsItem&>(item));
         break;
       }
       case SettingsType::Action: {
-        return CreateActionWidget(dynamic_cast<ActionSettingsItem&>(item));
+        return CreateActionWidget(static_cast<ActionSettingsItem&>(item));
         break;
       }
       case SettingsType::Custom: {
@@ -205,7 +205,13 @@ QWidget* SettingsWidgetFactory::CreateMultiChoiceWidget(
 }
 
 QWidget* SettingsWidgetFactory::CreateActionWidget(ActionSettingsItem& item) {
-  return nullptr;
+  XPushButton* button = new XPushButton(item.title().c_str());
+
+  XPushButton::connect(button, &XPushButton::pressed, [&item]() {
+    item.Trigger();
+  });
+
+  return CreateWidgetContainer(button);
 }
 
 QWidget* SettingsWidgetFactory::CreateWidgetContainer(QWidget* target_widget) {

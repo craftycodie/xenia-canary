@@ -65,6 +65,11 @@ std::vector<SettingsGroup*> SettingsSet::GetSettingsGroups() const {
   return groups;
 }
 
+IConfigVar* SettingsSet::FindConfigVar(const std::string& cvar_name) const {
+    auto& config = Config::Instance();
+    return config.FindConfigVarByName(cvar_name);
+}
+
 }  // namespace settings
 }  // namespace app
 }  // namespace xe
