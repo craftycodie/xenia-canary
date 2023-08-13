@@ -36,7 +36,7 @@ void XTabSelector::Build() {
     font_.setPixelSize(font_size_);
     QFontMetrics metrics(font_);
     QRect rect = metrics.boundingRect(tab_name);
-    int width = rect.width();
+    int width = metrics.horizontalAdvance(tab_name);
     int height = rect.height();
 
     // Translate rect to proper widget position
