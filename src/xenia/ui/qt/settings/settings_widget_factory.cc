@@ -215,11 +215,18 @@ QWidget* SettingsWidgetFactory::CreateMultiChoiceWidget(
 }
 
 QWidget* SettingsWidgetFactory::CreateActionWidget(ActionSettingsItem& item) {
-  XPushButton* button = new XPushButton(item.title().c_str());
+  QString title = item.title().c_str();
+  XPushButton* button = new XPushButton(title);
 
-  XPushButton::connect(button, &XPushButton::pressed, [&item]() {
-    item.Trigger();
-  });
+  // adjust button width based on font size and text length
+  constexpr int kButtonPadding = 40;
+  QFont button_font = button->font();
+  QFontMetrics font_metrics(button_font);
+  button->setMaximumWidth(font_metrics.horizontalAdvance(title) +
+                          kButtonPadding);
+
+  XPushButton::connect(button, &XPushButton::pressed,
+                       [&item]() { item.Trigger(); });
 
   return CreateWidgetContainer(button);
 }
