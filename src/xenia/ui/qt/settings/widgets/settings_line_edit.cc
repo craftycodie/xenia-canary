@@ -40,7 +40,6 @@ bool SettingsLineEdit::Initialize() {
   // based on if we are implementing a path-input text box or not
   if (item_.settings_type() == SettingsType::PathInput) {
     auto item = static_cast<PathInputSettingsItem*>(&item_);
-    if (!item) return false;
 
     fs::path current_path = item->value();
 
@@ -56,7 +55,6 @@ bool SettingsLineEdit::Initialize() {
 
   } else if (item_.settings_type() == SettingsType::TextInput) {
     auto item = static_cast<TextInputSettingsItem*>(&item_);
-    if (!item) return false;
 
     std::string current_text_str = item->value();
 
