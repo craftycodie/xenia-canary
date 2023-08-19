@@ -8,6 +8,7 @@
  */
 
 #include "settings_widget_factory.h"
+#include <QFileDialog>
 #include <QHBoxLayout>
 #include "xenia/ui/qt/settings/widgets/settings_checkbox.h"
 #include "xenia/ui/qt/settings/widgets/settings_combobox.h"
@@ -67,13 +68,11 @@ QWidget* SettingsWidgetFactory::CreateWidgetForSettingsItem(
         break;
       }
       case SettingsType::TextInput: {
-        return CreateTextInputWidget(
-            static_cast<TextInputSettingsItem&>(item));
+        return CreateTextInputWidget(static_cast<TextInputSettingsItem&>(item));
         break;
       }
       case SettingsType::PathInput: {
-        return CreatePathInputWidget(
-            static_cast<PathInputSettingsItem&>(item));
+        return CreatePathInputWidget(static_cast<PathInputSettingsItem&>(item));
         break;
       }
       case SettingsType::NumberInput: {
@@ -145,7 +144,18 @@ QWidget* SettingsWidgetFactory::CreatePathInputWidget(
   SettingsLineEdit* line_edit = new SettingsLineEdit(item);
   XPushButton* browse_btn = new XPushButton();
   browse_btn->SetIconFromGlyph(QChar(0xE838));
-  // TODO: Setup browse button logic
+  XPushButton::connect(browse_btn, &XPushButton::clicked, [&item, line_edit]() {
+    QString dialog_dir;
+    std::filesystem::path current_path = item.value();
+    if (std::filesystem::exists(current_path)) {
+      dialog_dir = current_path.string().c_str();
+    }
+    QString filepath =
+        QFileDialog::getOpenFileName(nullptr, "Select a file", dialog_dir);
+    if (!filepath.isEmpty()) {
+      line_edit->setText(filepath);
+    }
+  });
 
   control_layout->addWidget(line_edit);
   control_layout->addWidget(browse_btn);
