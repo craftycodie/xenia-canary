@@ -38,11 +38,15 @@ void XCheckBox::paintEvent(QPaintEvent* e) {
   painter.setClipping(false);
   painter.setRenderHints(QPainter::Antialiasing);
 
-  QPen pen(border_color_);
+  QPen pen(border_color());
 
   if (hasFocus()) {
-    pen.setColor(focus_color_);
+    pen.setColor(focus_color());
   }
+  else if (property("error").toBool()) {
+    pen.setColor(error_color());
+  }
+
   pen.setJoinStyle(Qt::MiterJoin);
 
   painter.setPen(pen);

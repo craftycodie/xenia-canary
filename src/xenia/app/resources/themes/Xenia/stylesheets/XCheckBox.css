@@ -14,5 +14,6 @@ these two properties cannot be changed programatically, to allow this move them 
 QCheckBox#XCheckBox {
   qproperty-border_color: $light2;
   qproperty-focus_color: $accent;
+  qproperty-error_color: $error;
   subcontrol-position: left top;
 }

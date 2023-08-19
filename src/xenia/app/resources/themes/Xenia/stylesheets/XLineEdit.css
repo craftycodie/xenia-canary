@@ -12,3 +12,7 @@ QLineEdit#XLineEdit:disabled {
     color: $light2;
     border: 2px solid $dark1;
 }
+
+QLineEdit#XLineEdit[error="true"] {
+    border: 2px solid $error;
+}

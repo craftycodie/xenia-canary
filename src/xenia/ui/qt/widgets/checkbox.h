@@ -12,10 +12,11 @@ namespace qt {
 class XCheckBox : public Themeable<QCheckBox> {
   Q_OBJECT
 
-  Q_PROPERTY(bool custom READ custom WRITE set_custom);
-  Q_PROPERTY(QColor border_color READ border_color WRITE set_border_color);
-  Q_PROPERTY(QColor focus_color READ focus_color WRITE set_focus_color);
-  Q_PROPERTY(QColor checked_color READ checked_color WRITE set_checked_color);
+  Q_PROPERTY(bool custom READ custom WRITE set_custom)
+  Q_PROPERTY(QColor border_color READ border_color WRITE set_border_color)
+  Q_PROPERTY(QColor focus_color READ focus_color WRITE set_focus_color)
+  Q_PROPERTY(QColor error_color READ error_color WRITE set_error_color)
+  Q_PROPERTY(QColor checked_color READ checked_color WRITE set_checked_color)
 
  public:
   explicit XCheckBox(QWidget* parent = nullptr);
@@ -31,6 +32,8 @@ class XCheckBox : public Themeable<QCheckBox> {
   void set_border_color(const QColor& color) { border_color_ = color; }
   const QColor& focus_color() const { return focus_color_; }
   void set_focus_color(const QColor& color) { focus_color_ = color; }
+  const QColor& error_color() const { return error_color_; }
+  void set_error_color(const QColor& color) { error_color_ = color; }
   const QColor& checked_color() const { return checked_color_; }
   void set_checked_color(const QColor& color) { checked_color_ = color; }
 
@@ -43,6 +46,7 @@ class XCheckBox : public Themeable<QCheckBox> {
   double label_indent_ = 8.0;
   QColor border_color_;
   QColor focus_color_;
+  QColor error_color_;
   QColor checked_color_;
 };
 

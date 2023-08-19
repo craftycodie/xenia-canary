@@ -29,27 +29,22 @@ bool SettingsCheckBox::Initialize() {
 
   // update settings item when checkbox state changes
   connect(this, &XCheckBox::stateChanged, [&](int state) {
+    bool result = false;
     if (state == Qt::Checked) {
-      item_.set_value(true);
+      result = item_.set_value(true);
     } else if (state == Qt::Unchecked) {
-      item_.set_value(false);
+      result = item_.set_value(false);
     } else {
       assert_always(
           "PartiallyChecked state not supported for SettingsCheckBox");
     }
+
+    setProperty("error", !result);
+    RefreshStyle();
   });
 
   return true;
 }
-
-// void SettingsCheckBox::OnValueUpdated(const ICommandVar& var) {
-//   const auto& new_value = item_.cvar()->current_value();
-//   if (!this->is_value_updating_) {
-//     // emit state change on ui thread
-//     QMetaObject::invokeMethod(this, "setChecked", Qt::QueuedConnection,
-//                               Q_ARG(bool, *new_value));
-//   }
-// }
 
 }  // namespace qt
 }  // namespace ui

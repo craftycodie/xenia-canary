@@ -31,6 +31,10 @@
       "value": "#FFC864"
     },
     {
+      "name": "error",
+      "value": "#C91C2E"
+    },
+    {
       "name": "light1",
       "value": "#FFFFFF"
     },

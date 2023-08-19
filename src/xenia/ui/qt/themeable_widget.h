@@ -23,6 +23,11 @@ class Themeable : public T {
     ApplyTheme(name);
   }
 
+  /**
+   * Loads the specified theme from the theme manager and applies to this
+   * widget.
+   * @param theme_name theme to apply
+   */
   void ApplyTheme(const QString& theme_name) {
     if (!theme_name.isNull()) {
       reinterpret_cast<QWidget*>(this)->setObjectName(theme_name);
@@ -36,7 +41,16 @@ class Themeable : public T {
     if (!style.isNull()) {
       reinterpret_cast<QWidget*>(this)->setStyleSheet(base_style + style);
     }
-  };
+  }
+
+  /**
+   * Refreshes the style of the current widget.
+   * Call this after applying dynamic properties (e.g. with setProperty())
+   */
+  void RefreshStyle() {
+    this->style()->unpolish(this);
+    this->style()->polish(this);
+  }
 
   virtual void paintEvent(QPaintEvent* event) override {
     QStyleOption opt;

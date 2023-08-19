@@ -46,9 +46,11 @@ bool SettingsLineEdit::Initialize() {
     std::string current_path_str = std::string(current_path.u8string());
     this->setText(QString(current_path_str.c_str()));
 
-    connect(this, &XLineEdit::textChanged, [item](const QString& text) {
+    connect(this, &XLineEdit::textChanged, [this, item](const QString& text) {
       auto path = std::string(text.toUtf8());
-      item->set_value(path);
+      bool result = item->set_value(path);
+      setProperty("error", !result);
+      RefreshStyle();
     });
 
     return true;
@@ -60,8 +62,11 @@ bool SettingsLineEdit::Initialize() {
 
     this->setText(QString(current_text_str.c_str()));
 
-    connect(this, &XLineEdit::textChanged, [item](const QString& text) {
-      item->set_value(std::string(text.toUtf8()));
+    connect(this, &XLineEdit::textChanged, [this, item](const QString& text) {
+      std::string value = std::string(text.toUtf8());
+      bool result = item->set_value(value);
+      setProperty("error", !result);
+      RefreshStyle();
     });
 
     return true;
