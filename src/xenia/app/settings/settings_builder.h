@@ -175,8 +175,14 @@ struct PathInputBuilder
     assert_true(valid, "Unset fields or invalid state for this builder");
     return valid ? std::make_unique<PathInputSettingsItem>(
                        key_, title_, description_, *owner_,
-                       std::move(value_store_), require_valid_path_)
+                       std::move(value_store_), selection_type_,
+                       require_valid_path_)
                  : nullptr;
+  }
+
+  PathInputBuilder& selectionType(PathInputSelectionType type) {
+    selection_type_ = type;
+    return *this;
   }
 
   PathInputBuilder& requireValidPath(bool value) {
@@ -185,6 +191,7 @@ struct PathInputBuilder
   }
 
  protected:
+  PathInputSelectionType selection_type_ = PathInputSelectionType::Any;
   bool require_valid_path_ = true;
 };
 

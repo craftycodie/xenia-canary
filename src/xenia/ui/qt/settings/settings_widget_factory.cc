@@ -146,12 +146,21 @@ QWidget* SettingsWidgetFactory::CreatePathInputWidget(
   browse_btn->SetIconFromGlyph(QChar(0xE838));
   XPushButton::connect(browse_btn, &XPushButton::clicked, [&item, line_edit]() {
     QString dialog_dir;
+
     std::filesystem::path current_path = item.value();
     if (std::filesystem::exists(current_path)) {
       dialog_dir = current_path.string().c_str();
     }
-    QString filepath =
-        QFileDialog::getOpenFileName(nullptr, "Select a file", dialog_dir);
+
+    QString filepath;
+    if (item.selection_type() & PathInputSelectionType::File) {
+      filepath = QFileDialog::getOpenFileName(
+          nullptr, QWidget::tr("Select a file"), dialog_dir);
+    } else {
+      filepath = QFileDialog::getExistingDirectory(
+          nullptr, QWidget::tr("Select a directory"), dialog_dir);
+    }
+
     if (!filepath.isEmpty()) {
       line_edit->setText(filepath);
     }

@@ -39,6 +39,12 @@ enum class SettingsType : uint8_t {
   UNKNOWN = 0xFF
 };
 
+enum PathInputSelectionType : uint8_t {
+  File = 1 << 0,
+  Folder = 1 << 1,
+  Any = File | Folder
+};
+
 template <typename T>
 struct ValueStore {
   virtual ~ValueStore() = default;
@@ -181,9 +187,11 @@ class PathInputSettingsItem
       const std::string_view& key, const std::string_view& title,
       const std::string_view& description, SettingsSet& owning_set,
       std::unique_ptr<ValueStore<std::filesystem::path>> store,
+      PathInputSelectionType selection_type = Any,
       bool require_valid_path = true)
       : ValueSettingsItem<SettingsType::PathInput, std::filesystem::path>(
             key, title, description, owning_set, std::move(store)),
+        selection_type_(selection_type),
         require_valid_path_(require_valid_path) {}
 
   bool validate(const std::filesystem::path& value) const override {
@@ -193,10 +201,18 @@ class PathInputSettingsItem
       }
     }
 
+    if ((selection_type_ & File && !std::filesystem::is_regular_file(value)) ||
+        (selection_type_ & Folder && !std::filesystem::is_directory(value))) {
+      return false;
+    }
+
     return true;
   }
 
+  PathInputSelectionType selection_type() const { return selection_type_; }
+
  private:
+  PathInputSelectionType selection_type_;
   bool require_valid_path_;
 };
 

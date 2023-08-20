@@ -62,6 +62,7 @@ void GeneralSet::LoadSettings() {
             .key("cache_root")
             .owner(this)
             .valueStore(CvarValueStore<fs::path>::Create(*cvar_cache_root))
+            .selectionType(Folder)
             .requireValidPath(true)
             .Build();
 
