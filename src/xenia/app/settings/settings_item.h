@@ -88,10 +88,12 @@ struct CvarValueStore : ValueStore<T> {
   const T& GetValue() const override { return *cvar_->current_value(); }
   bool SetValue(const T& value) override {
     cvar_->SetConfigValue(value);
+    Config::Instance().SaveConfig();
     return true;
   }
   bool ResetValue() override {
     cvar_->ResetConfigValueToDefault();
+    Config::Instance().SaveConfig();
     return true;
   }
 
