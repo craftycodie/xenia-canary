@@ -8,6 +8,7 @@
  */
 
 #include "settings_widget_factory.h"
+#include <QButtonGroup>
 #include <QFileDialog>
 #include <QHBoxLayout>
 #include "xenia/ui/qt/settings/widgets/settings_checkbox.h"
@@ -16,6 +17,7 @@
 #include "xenia/ui/qt/settings/widgets/settings_slider.h"
 #include "xenia/ui/qt/widgets/groupbox.h"
 #include "xenia/ui/qt/widgets/push_button.h"
+#include "xenia/ui/qt/widgets/radio_button.h"
 #include "xenia/ui/qt/widgets/scroll_area.h"
 
 namespace xe {
@@ -207,18 +209,56 @@ QWidget* SettingsWidgetFactory::CreateRangeInputWidget(
 QWidget* SettingsWidgetFactory::CreateMultiChoiceWidget(
     IMultiChoiceSettingsItem& item) {
   QWidget* ctr = new QWidget();
-  QHBoxLayout* ctr_layout = new QHBoxLayout();
-  ctr_layout->setContentsMargins(0, 0, 0, 0);
-  ctr_layout->setSpacing(20);
-  ctr->setLayout(ctr_layout);
 
-  QLabel* title_label = create_title_label(item.title());
+  // check if we should make combobox or radio group
+  if (item.item_type() == MultiChoiceItemType::Combo) {
+    QHBoxLayout* ctr_layout = new QHBoxLayout();
+    ctr_layout->setContentsMargins(0, 0, 0, 0);
+    ctr_layout->setSpacing(20);
+    ctr->setLayout(ctr_layout);
 
-  SettingsComboBox* combobox = new SettingsComboBox(item);
+    QLabel* title_label = create_title_label(item.title());
+    ctr_layout->addWidget(title_label);
 
-  ctr_layout->addWidget(title_label);
-  ctr_layout->addWidget(combobox);
-  ctr_layout->addStretch();
+    SettingsComboBox* combobox = new SettingsComboBox(item);
+    ctr_layout->addWidget(combobox);
+
+    ctr_layout->addStretch();
+  } else {
+    QVBoxLayout* ctr_layout = new QVBoxLayout();
+    ctr_layout->setContentsMargins(0, 0, 0, 0);
+    ctr->setLayout(ctr_layout);
+
+    QLabel* title_label = create_title_label(item.title());
+    ctr_layout->addWidget(title_label);
+
+    QButtonGroup* group = new QButtonGroup();
+    QHBoxLayout* button_layout = new QHBoxLayout();
+
+    const auto& options = item.option_names();
+    for (int i = 0; i < options.size(); i++) {
+      XRadioButton* button = new XRadioButton(options[i].c_str());
+      group->addButton(button, i);
+      button_layout->addWidget(button);
+
+      if (i == item.current_index()) {
+        button->setChecked(true);
+      }
+    }
+
+    QButtonGroup::connect(group, &QButtonGroup::buttonToggled,
+                          [&item](QAbstractButton* button, bool checked) {
+                            int index = button->group()->checkedId();
+                            if (index >= 0) {
+                              item.set_selection(index);
+                            }
+                          });
+
+    button_layout->addStretch();
+    ctr_layout->addLayout(button_layout);
+
+    ctr_layout->addStretch();
+  }
 
   return CreateWidgetContainer(ctr);
 }

@@ -19,6 +19,7 @@ class XRadioButton : public Themeable<QRadioButton> {
 
  public:
   explicit XRadioButton(QWidget* parent = nullptr);
+  XRadioButton(const QString& title, QWidget* parent = nullptr);
 
   double label_indent() const { return label_indent_; }
   void set_label_indent(double indent) { label_indent_ = indent; }

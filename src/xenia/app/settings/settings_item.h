@@ -45,6 +45,8 @@ enum PathInputSelectionType : uint8_t {
   Any = File | Folder
 };
 
+enum class MultiChoiceItemType : uint8_t { Combo, Radio, Default = Combo };
+
 template <typename T>
 struct ValueStore {
   virtual ~ValueStore() = default;
@@ -262,6 +264,13 @@ class IMultiChoiceSettingsItem : public ISettingsItem {
   virtual bool set_selection(unsigned int index) = 0;
 
   /**
+   * Hints to the UI system consuming this settings item how it should prefer to
+   * display the item (e.g. as a combobox or radio button)
+   * @return recommended display type
+   */
+  virtual MultiChoiceItemType item_type() const = 0;
+
+  /**
    * @return the std::type_info for the target value type this multi-choice item
    * supports
    */
@@ -285,21 +294,43 @@ class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
     std::string title;
   };
 
-  MultiChoiceSettingsItem(std::string_view key, std::string_view title,
-                          std::string_view description, SettingsSet& owning_set,
-                          std::unique_ptr<ValueStore<T>> store,
-                          std::initializer_list<Option> options)
+  MultiChoiceSettingsItem(
+      std::string_view key, std::string_view title,
+      std::string_view description, SettingsSet& owning_set,
+      std::unique_ptr<ValueStore<T>> store,
+      std::initializer_list<Option> options,
+      MultiChoiceItemType item_type = MultiChoiceItemType::Default)
       : IMultiChoiceSettingsItem(key, title, description, owning_set),
         value_store_(std::move(store)),
-        options_(options) {}
+        options_(options),
+        item_type_(item_type) {
+    Initialize();
+  }
 
-  MultiChoiceSettingsItem(std::string_view key, std::string_view title,
-                          std::string_view description, SettingsSet& owning_set,
-                          std::unique_ptr<ValueStore<T>> store,
-                          const std::vector<Option>& options)
+  MultiChoiceSettingsItem(
+      std::string_view key, std::string_view title,
+      std::string_view description, SettingsSet& owning_set,
+      std::unique_ptr<ValueStore<T>> store, const std::vector<Option>& options,
+      MultiChoiceItemType item_type = MultiChoiceItemType::Default)
       : IMultiChoiceSettingsItem(key, title, description, owning_set),
         value_store_(std::move(store)),
-        options_(options) {}
+        options_(options),
+        item_type_(item_type) {
+    Initialize();
+  }
+
+  void Initialize() {
+    const T& value = value_store_->GetValue();
+    for (int i = 0; i < options_.size(); i++) {
+      if (options_[i].value == value) {
+        selection_ = i;
+      }
+    }
+
+    if (selection_ < 0) {
+      assert_always("failed to find option that matches current index");
+    }
+  }
 
   std::vector<std::string> option_names() const override {
     std::vector<std::string> option_names;
@@ -336,6 +367,8 @@ class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
     return true;
   }
 
+  MultiChoiceItemType item_type() const override { return item_type_; }
+
   const std::type_info& target_type() const override { return typeid(T); }
 
  private:
@@ -346,7 +379,8 @@ class MultiChoiceSettingsItem : public IMultiChoiceSettingsItem {
 
   std::unique_ptr<ValueStore<T>> value_store_;
   std::vector<Option> options_;
-  unsigned int selection_ = 0;
+  MultiChoiceItemType item_type_;
+  int selection_ = -1;
 };
 
 using StringMultiChoiceSettingsItem = MultiChoiceSettingsItem<std::string>;

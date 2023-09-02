@@ -13,6 +13,11 @@ XRadioButton::XRadioButton(QWidget* parent)
   setFocusPolicy(Qt::TabFocus);  // disable retaining focus through mouse click
 }
 
+XRadioButton::XRadioButton(const QString& title, QWidget* parent)
+    : Themeable<QRadioButton>("XRadioButton", title, parent) {
+  setFocusPolicy(Qt::TabFocus); // disable retaining focus through mouse click
+}
+
 void XRadioButton::paintEvent(QPaintEvent* e) {
   QStyleOptionButton option;
   initStyleOption(&option);

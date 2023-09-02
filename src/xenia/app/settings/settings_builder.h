@@ -129,12 +129,17 @@ struct MultiChoiceBuilder
     return *this;
   }
 
+  MultiChoiceBuilder& type(MultiChoiceItemType type) {
+    type_ = type;
+    return *this;
+  }
+
   std::unique_ptr<ISettingsItem> BuildImpl() {
     bool valid = IsValid();
     assert_true(valid, "Unset fields or invalid state for this builder");
     return valid ? std::make_unique<MultiChoiceSettingsItem<T>>(
                        this->key_, this->title_, this->description_,
-                       *this->owner_, std::move(this->value_store_), options_)
+                       *this->owner_, std::move(this->value_store_), options_, type_)
                  : nullptr;
   }
 
@@ -142,6 +147,7 @@ struct MultiChoiceBuilder
 
  protected:
   std::vector<OptionType> options_;
+  MultiChoiceItemType type_ = MultiChoiceItemType::Default;
 };
 
 struct SwitchBuilder : ValueSettingsBuilder<SwitchBuilder, SwitchSettingsItem> {

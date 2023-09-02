@@ -43,11 +43,12 @@ void GeneralSet::LoadSettings() {
                      .title("Graphics System")
                      .description("Choose the graphics impl.")
                      .owner(this)
+                     .type(MultiChoiceItemType::Combo)
                      .valueStore(CvarValueStore<std::string>::Create(*cvar_gpu))
-                     .option("any", "Any")
-                     .option("d3d12", "Direct3D 12")
-                     .option("vulkan", "Vulkan")
-                     .option("null", "None")
+                     .option("Any", "any")
+                     .option("Direct3D 12", "d3d12")
+                     .option("Vulkan", "vulkan")
+                     .option("None", "null")
                      .Build();
 
     AddSettingsItem("General Settings", std::move(field));
