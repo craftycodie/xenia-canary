@@ -15,6 +15,7 @@
 #include <QScreen>
 
 #include "main_window.h"
+#include "theme_manager.h"
 #include "window_qt.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/logging.h"
@@ -82,14 +83,15 @@ class QtDemoApp final : public xe::ui::WindowedApp {
   void OnDestroy() override;
 
  private:
+  WindowedAppContext& context_;
   std::unique_ptr<QtWindow> window_;
   explicit QtDemoApp(WindowedAppContext& app_context);
 };
 
 QtDemoApp::QtDemoApp(WindowedAppContext& app_context)
     : WindowedApp(app_context, "xenia"),
-      window_(std::make_unique<MainWindow>(app_context, "Xenia Qt Demo App",
-                                           1280, 720)) {}
+      context_(app_context),
+      window_(nullptr) {}
 
 QtDemoApp::~QtDemoApp() = default;
 
@@ -143,6 +145,20 @@ bool QtDemoApp::OnInitialize() {
   }
   cache_root = std::filesystem::absolute(cache_root);
   XELOGI("Cache root: {}", xe::path_to_utf8(cache_root));
+
+  // init theme manager.
+  // by default this loads a theme internal to the exe (see qrc resources)
+  // but can be overridden with a cvar.
+  ThemeManager& manager = ThemeManager::Instance();
+  manager.LoadThemes();
+
+#if DEBUG
+  manager.EnableHotReload();
+#endif
+
+  // we are now ready to create and open the window
+  window_ =
+      std::make_unique<MainWindow>(context_, "Xenia Qt Demo App", 1280, 720);
 
   window_->Open();
 

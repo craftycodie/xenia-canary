@@ -44,7 +44,7 @@ void XAction::rebuildGlyphIcons() {
     return pixmap;
   };
 
-  auto theme_manager = ThemeManager::Instance();
+  ThemeManager& theme_manager = ThemeManager::Instance();
   const Theme& current_theme = theme_manager.current_theme();
 
   QColor off_color = current_theme.ColorForKey("light2");

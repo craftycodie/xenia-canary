@@ -9,33 +9,49 @@
 #ifndef XENIA_UI_QT_THEMEMANAGER_H_
 #define XENIA_UI_QT_THEMEMANAGER_H_
 
-#include <QColor>
+#include <QFileSystemWatcher>
+#include <QScopedPointer>
 #include <QString>
 #include <QVector>
 
 #include "xenia/ui/qt/theme.h"
-#include "xenia/vfs/virtual_file_system.h"
+
 
 namespace xe {
 namespace ui {
 namespace qt {
 
-class ThemeManager {
+class ThemeManager : public QObject {
+  Q_OBJECT
+  Q_DISABLE_COPY_MOVE(ThemeManager)
+
  public:
   static ThemeManager& Instance();
-  Theme& current_theme() { return themes_.front(); }
-  const QVector<Theme>& themes() const { return themes_; }
+
+  ~ThemeManager() = default;
+
+  Theme* current_theme();
+  QVector<Theme*> themes() const;
   const QString& base_style() const;
 
- private:
   void LoadThemes();
-  Theme LoadTheme(const QString& name);
-  ThemeManager();
+  const Theme* LoadTheme(const QString& path);
 
-  QVector<Theme> themes_;
+  void EnableHotReload();
+  void DisableHotReload();
+
+ private slots:
+  void OnThemeDirectoryChanged(const QString& path);
+
+ private:
+  ThemeManager(QObject* parent = nullptr);
+
+  QVector<QSharedPointer<Theme>> themes_;
+  QScopedPointer<QFileSystemWatcher> watcher_;
 };
 
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe
+
 #endif  // XENIA_UI_QT_THEMEMANAGER_H_

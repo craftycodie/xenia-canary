@@ -10,6 +10,7 @@
 #define XENIA_UI_QT_THEME_H_
 
 #include <QMap>
+#include <QObject>
 #include <QString>
 #include <QVector>
 #include "theme_configuration.h"
@@ -36,27 +37,45 @@ using StyleMap = QMap<QString, QString>;
  *
  * Macro values are defined in the config file.
  */
-class Theme {
- public:
-  Theme() = default;
-  Theme(const QString& directory) : directory_(directory) {}
-  Theme(const ThemeConfiguration& config) : config_(config) {}
+class Theme : public QObject {
+  Q_OBJECT
 
+ public:
+  Theme(QObject* parent = nullptr) : QObject(parent) {}
+  Theme(const QString& directory, QObject* parent = nullptr)
+      : QObject(parent), directory_(directory) {}
+  Theme(const ThemeConfiguration& config, QObject* parent = nullptr)
+      : QObject(parent), config_(config) {}
+
+  /**
+   * Loads the current theme from the directory provided in the ctor
+   * @return whether the theme was loaded correctly or had errors
+   */
   ThemeStatus LoadTheme();
-  QString StylesheetForComponent(const QString& compoment);
+
+  /**
+   * Reloads the current theme.
+   * This is different to LoadTheme() as it also wipes the stylesheet cache
+   */
+  ThemeStatus ReloadTheme();
+
+  QString StylesheetForComponent(const QString& component) const;
 
   // Check the return value is valid with color.isValid()
-  QColor ColorForKey(const QString& key, QColor color = QColor()) const;
+  QColor ColorForKey(const QString& key, QColor fallback = QColor()) const;
 
   const QString& directory() const { return directory_; }
   const ThemeConfiguration& config() const { return config_; }
 
+ signals:
+  void ThemeReloaded();
+
  private:
-  QString PreprocessStylesheet(QString style);
+  QString PreprocessStylesheet(QString filename) const;
 
   QString directory_;
   ThemeConfiguration config_;
-  StyleMap styles_;
+  mutable StyleMap styles_; // marked mutable as acts as a cache
 };
 
 }  // namespace qt

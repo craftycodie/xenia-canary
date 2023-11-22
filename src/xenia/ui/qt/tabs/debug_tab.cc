@@ -222,14 +222,16 @@ QWidget* DebugTab::CreateThemeTab() {
   QVBoxLayout* layout = new QVBoxLayout(w);
   layout->setContentsMargins(64, 64, 64, 64);
   ThemeManager& theme_manager = ThemeManager::Instance();
-  Theme& theme = theme_manager.current_theme();
+  Theme* theme = theme_manager.current_theme();
 
-  QLabel* label = new QLabel(
-      QStringLiteral("Current Theme: %1\n Description: %2\n Path: %3")
-          .arg(theme.config().name(), theme.config().description(),
-               theme.directory()));
+  if (theme) {
+    QLabel* label = new QLabel(
+        QStringLiteral("Current Theme: %1\n Description: %2\n Path: %3")
+            .arg(theme->config().name(), theme->config().description(),
+                 theme->directory()));
 
-  layout->addWidget(label);
+    layout->addWidget(label);
+  }
 
   return w;
 }

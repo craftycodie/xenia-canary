@@ -28,7 +28,18 @@ ThemeStatus Theme::LoadTheme() {
   return THEME_LOAD_OK;
 }
 
-QString Theme::StylesheetForComponent(const QString& component) {
+ThemeStatus Theme::ReloadTheme() {
+  styles_.clear();
+  ThemeStatus status = LoadTheme();
+
+  if (status == THEME_LOAD_OK) {
+    emit ThemeReloaded();
+  }
+
+  return status;
+}
+
+QString Theme::StylesheetForComponent(const QString& component) const {
   // component has already been processed and stored
   if (styles_.find(component) != styles_.end()) {
     return styles_.value(component);
@@ -39,17 +50,17 @@ QString Theme::StylesheetForComponent(const QString& component) {
   return *styles_.insert(component, preprocessed_style);
 }
 
-QColor Theme::ColorForKey(const QString& key, QColor color) const {
+QColor Theme::ColorForKey(const QString& key, QColor fallback) const {
   QColor color_ = config_.ColorForKey(key);
 
   if (color_.isValid()) {
     return color_;
   } else {
-    return color;
+    return fallback;
   }
 }
 
-QString Theme::PreprocessStylesheet(QString filename) {
+QString Theme::PreprocessStylesheet(QString filename) const {
   filename += ".css";
   QString qss_dir = directory_ + "/stylesheets/";
   QFile file;

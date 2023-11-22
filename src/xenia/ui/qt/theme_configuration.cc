@@ -59,6 +59,9 @@ bool ThemeConfiguration::LoadFromFile(const QString& filename) {
     return true;
   }
 
+  // clear cached colors (if any)
+  colors_.clear();
+
   QJsonArray colors_array = colors_obj.toArray();
   for (QJsonValue color_value : colors_array) {
     // check color value is correct data type
