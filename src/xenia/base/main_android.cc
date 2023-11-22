@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdlib>
 
+#include "xenia/config.h"
 #include "xenia/base/assert.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/filesystem.h"
@@ -103,7 +104,7 @@ void InitializeAndroidAppFromMainThread(int32_t api_level,
 
   // Initialize the cvars before logging.
   if (launch_arguments_bundle) {
-    cvar::ParseLaunchArgumentsFromAndroidBundle(launch_arguments_bundle);
+    Config::instance()::ParseLaunchArgumentsFromAndroidBundle(launch_arguments_bundle);
   }
 
   // Multiple apps can be launched within one process - don't pass the actual

@@ -83,6 +83,10 @@ class Config {
                             std::string_view positional_help,
                             const std::vector<std::string>& positional_options);
 
+#if XE_PLATFORM_ANDROID
+  void ParseLaunchArgumentsFromAndroidBundle(jobject bundle);
+#endif  // XE_PLATFORM_ANDROID
+
   /**
    * Register a config var to the config system
    * Claims ownership of the provided pointer

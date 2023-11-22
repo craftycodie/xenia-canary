@@ -9,18 +9,12 @@
 
 #include <jni.h>
 
-#include "xenia/base/assert.h"
-#include "xenia/base/cvar.h"
-#include "xenia/base/filesystem.h"
-#include "xenia/base/main_android.h"
+#include "config.h"
 
-namespace cvar {
 
-void ParseLaunchArgumentsFromAndroidBundle(jobject bundle) {
-  if (!ConfigVars) {
-    return;
-  }
+namespace xe {
 
+void Config::ParseLaunchArgumentsFromAndroidBundle(jobject bundle) {
   JNIEnv* jni_env = xe::GetAndroidThreadJniEnv();
   if (!jni_env) {
     return;
@@ -121,10 +115,10 @@ void ParseLaunchArgumentsFromAndroidBundle(jobject bundle) {
       jni_env->DeleteLocalRef(key);
       continue;
     }
-    auto cvar_it = ConfigVars->find(key_utf);
+    auto cvar_it = config_vars_.find(key_utf);
     jni_env->ReleaseStringUTFChars(key, key_utf);
     // key_utf can't be used from now on.
-    if (cvar_it == ConfigVars->end()) {
+    if (cvar_it == config_vars_.end()) {
       jni_env->DeleteLocalRef(key);
       continue;
     }
@@ -209,4 +203,4 @@ void ParseLaunchArgumentsFromAndroidBundle(jobject bundle) {
   jni_env->DeleteLocalRef(bundle_class);
 }
 
-}  // namespace cvar
+}  // namespace xe

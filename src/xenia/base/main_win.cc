@@ -103,7 +103,7 @@ bool ParseWin32LaunchArguments(
   LocalFree(wargv);
 
   if (!transparent_options) {
-    cvar::ParseLaunchArguments(argc, argv, positional_usage,
+    Config::Instance().ParseLaunchArguments(argc, argv, positional_usage,
                                positional_options);
   }
 

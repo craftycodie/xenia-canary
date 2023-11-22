@@ -23,85 +23,6 @@ using u8_citer = utfcpp::iterator<std::string_view::const_iterator>;
 
 namespace xe {
 namespace cvar {
-
-cxxopts::Options options("xenia", "Xbox 360 Emulator");
-std::map<std::string, ICommandVar*>* CmdVars;
-std::map<std::string, IConfigVar*>* ConfigVars;
-std::multimap<uint32_t, const IConfigVarUpdate*>* IConfigVarUpdate::updates_;
-
-void PrintHelpAndExit() {
-  std::cout << options.help({""}) << std::endl;
-  std::cout << "For the full list of command line arguments, see xenia.cfg."
-            << std::endl;
-  exit(0);
-}
-
-void ParseLaunchArguments(int& argc, char**& argv,
-                          const std::string_view positional_help,
-                          const std::vector<std::string>& positional_options) {
-  options.add_options()("help", "Prints help and exit.");
-
-  if (!CmdVars) {
-    CmdVars = new std::map<std::string, ICommandVar*>();
-  }
-
-  if (!ConfigVars) {
-    ConfigVars = new std::map<std::string, IConfigVar*>();
-  }
-
-  for (auto& it : *CmdVars) {
-    auto cmdVar = it.second;
-    cmdVar->AddToLaunchOptions(&options);
-  }
-
-  for (const auto& it : *ConfigVars) {
-    auto configVar = it.second;
-    configVar->AddToLaunchOptions(&options);
-  }
-
-  try {
-    options.positional_help(std::string(positional_help));
-    options.parse_positional(positional_options);
-
-    auto result = options.parse(argc, argv);
-    if (result.count("help")) {
-      xe::AttachConsole();
-      if (xe::has_console_attached()) {
-        PrintHelpAndExit();
-      } else {
-        xe::ShowSimpleMessageBox(xe::SimpleMessageBoxType::Help,
-                                 options.help({""}));
-        exit(0);
-      }
-    }
-
-    for (auto& it : *CmdVars) {
-      auto cmdVar = static_cast<ICommandVar*>(it.second);
-      if (result.count(cmdVar->name())) {
-        cmdVar->LoadFromLaunchOptions(&result);
-      }
-    }
-
-    for (auto& it : *ConfigVars) {
-      auto configVar = static_cast<IConfigVar*>(it.second);
-      if (result.count(configVar->name())) {
-        configVar->LoadFromLaunchOptions(&result);
-      }
-    }
-  } catch (const cxxopts::OptionException& e) {
-    xe::AttachConsole();
-    if (xe::has_console_attached()) {
-      std::cout << e.what() << std::endl;
-      PrintHelpAndExit();
-    } else {
-      std::string m =
-          "Invalid launch options were given.\n" + options.help({""});
-      xe::ShowSimpleMessageBox(xe::SimpleMessageBoxType::Error, m);
-      exit(0);
-    }
-  }
-}
-
 namespace toml {
 
 std::string EscapeBasicString(const std::string_view view) {
@@ -217,6 +138,5 @@ std::string EscapeString(const std::string_view view) {
 }
 
 }  // namespace toml
-
 }  // namespace cvar
 }  // namespace xe

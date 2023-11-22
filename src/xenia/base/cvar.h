@@ -313,13 +313,6 @@ void ConfigVar<T>::ResetConfigValueToDefault() {
   SetConfigValue(this->default_value_);
 }
 
-void ParseLaunchArguments(int& argc, char**& argv,
-                          const std::string_view positional_help,
-                          const std::vector<std::string>& positional_options);
-#if XE_PLATFORM_ANDROID
-void ParseLaunchArgumentsFromAndroidBundle(jobject bundle);
-#endif  // XE_PLATFORM_ANDROID
-
 template <typename T>
 IConfigVar* define_configvar(const char* name, T* default_value,
                              const char* description, const char* category,
