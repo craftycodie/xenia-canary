@@ -56,14 +56,19 @@ int main(int argc, char** argv) {
   fonts.addApplicationFont(":/resources/fonts/segoeuisb.ttf");
   QApplication::setFont(QFont("Segoe UI"));
 
-  if (xe::cvars::enable_console) {
-    xe::AttachConsole();
-  }
-
   QtWindowedAppContext app_context;
 
   std::unique_ptr<xe::ui::WindowedApp> app =
       xe::ui::GetWindowedAppCreator()(app_context);
+
+  if (!xe::ParseWin32LaunchArguments(false, app->GetPositionalOptionsUsage(),
+                                     app->GetPositionalOptions(), nullptr)) {
+    return EXIT_FAILURE;
+  }
+
+  if (xe::cvars::enable_console) {
+    xe::AttachConsole();
+  }
 
 #if XE_PLATFORM_WIN32
   xe::InitializeWin32App(app->GetName());
