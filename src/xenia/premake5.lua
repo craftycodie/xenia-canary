@@ -13,4 +13,4 @@ project("xenia-core")
   defines({
     "QT_ENABLED"
   })
-  files({"*.h", "*.cc"})
+  local_platform_files()
