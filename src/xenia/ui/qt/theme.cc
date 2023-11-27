@@ -51,10 +51,10 @@ QString Theme::StylesheetForComponent(const QString& component) const {
 }
 
 QColor Theme::ColorForKey(const QString& key, QColor fallback) const {
-  QColor color_ = config_.ColorForKey(key);
+  QColor color = config_.ColorForKey(key);
 
-  if (color_.isValid()) {
-    return color_;
+  if (color.isValid()) {
+    return color;
   } else {
     return fallback;
   }

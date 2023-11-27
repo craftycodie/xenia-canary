@@ -16,7 +16,6 @@
 
 #include "xenia/ui/qt/theme.h"
 
-
 namespace xe {
 namespace ui {
 namespace qt {
@@ -30,12 +29,14 @@ class ThemeManager : public QObject {
 
   ~ThemeManager() = default;
 
-  Theme* current_theme();
+  Theme* current_theme() const;
   QVector<Theme*> themes() const;
   const QString& base_style() const;
 
   void LoadThemes();
   const Theme* LoadTheme(const QString& path);
+
+  void SetActiveTheme(Theme* theme);
 
   void EnableHotReload();
   void DisableHotReload();
@@ -47,6 +48,7 @@ class ThemeManager : public QObject {
   ThemeManager(QObject* parent = nullptr);
 
   QVector<QSharedPointer<Theme>> themes_;
+  Theme* active_theme_;
   QScopedPointer<QFileSystemWatcher> watcher_;
 };
 

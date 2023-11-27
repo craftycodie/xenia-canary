@@ -27,19 +27,15 @@ namespace xe {
 namespace ui {
 namespace qt {
 
-ThemeManager::ThemeManager(QObject* parent) : QObject(parent) {}
+ThemeManager::ThemeManager(QObject* parent)
+    : QObject(parent), active_theme_(nullptr) {}
 
 ThemeManager& ThemeManager::Instance() {
   static ThemeManager manager;
   return manager;
 }
-Theme* ThemeManager::current_theme() {
-  if (!themes_.empty()) {
-    return themes_.front().get();
-  }
+Theme* ThemeManager::current_theme() const { return active_theme_; }
 
-  return nullptr;
-}
 QVector<Theme*> ThemeManager::themes() const {
   QVector<Theme*> out_vec;
 
@@ -77,6 +73,8 @@ void ThemeManager::LoadThemes() {
   while (iter.hasNext()) {
     LoadTheme(iter.next());
   }
+
+  SetActiveTheme(themes_.back().get());
 }
 
 const Theme* ThemeManager::LoadTheme(const QString& path) {
@@ -91,6 +89,23 @@ const Theme* ThemeManager::LoadTheme(const QString& path) {
 
   XELOGW("Could not load theme at directory '{}'", path.toUtf8());
   return nullptr;
+}
+
+void ThemeManager::SetActiveTheme(Theme* theme) {
+  assert_true(theme != nullptr);
+
+  const auto it = std::find_if(
+      themes_.begin(), themes_.end(),
+      [theme](const QSharedPointer<Theme>& t) { return theme == t.get(); });
+
+  if (it == themes_.end()) {
+    XELOGW("Tried to set an untracked theme as active theme");
+    return;
+  }
+
+  active_theme_ = theme;
+
+  active_theme_->ReloadTheme(); // TODO: do we need to refresh?
 }
 
 void ThemeManager::EnableHotReload() {

@@ -41,7 +41,7 @@ class Theme : public QObject {
   Q_OBJECT
 
  public:
-  Theme(QObject* parent = nullptr) : QObject(parent) {}
+  explicit Theme(QObject* parent = nullptr) : QObject(parent) {}
   Theme(const QString& directory, QObject* parent = nullptr)
       : QObject(parent), directory_(directory) {}
   Theme(const ThemeConfiguration& config, QObject* parent = nullptr)

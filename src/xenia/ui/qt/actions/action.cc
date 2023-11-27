@@ -45,10 +45,12 @@ void XAction::rebuildGlyphIcons() {
   };
 
   ThemeManager& theme_manager = ThemeManager::Instance();
-  const Theme& current_theme = theme_manager.current_theme();
-
-  QColor off_color = current_theme.ColorForKey("light2");
-  QColor on_color = current_theme.ColorForKey("secondary");
+  Theme* current_theme = theme_manager.current_theme();
+  QColor off_color, on_color;
+  if (current_theme) {
+    off_color = current_theme->ColorForKey("light2");
+    on_color = current_theme->ColorForKey("secondary");
+  }
 
   QPixmap OFF = renderPixmap(off_color);
   QPixmap ON = renderPixmap(on_color);
