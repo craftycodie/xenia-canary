@@ -43,6 +43,13 @@ QToolButton#XDropdownButton::menu-button:pressed {
   background: $accentDark;
 }
 
+QToolButton#XDropdownButton::menu-arrow {
+  image: url(:/resources/graphics/down-arrow.png);
+  width: 14px;
+  height: 14px;
+  padding-left: 2px;
+}
+
 QToolButton#XDropdownButton::menu-arrow:open {
   top: -1px;
   left: -1px;

@@ -3,6 +3,7 @@ QComboBox#XComboBox {
     background: $dark2;
     color: $light2;
     padding-left: 4px;
+    padding-right: 4px;
 }
 
 QComboBox#XComboBox:pressed, QComboBox#XComboBox:hover, QComboBox#XComboBox:focus, QComboBox#XComboBox:on {
@@ -15,6 +16,7 @@ QComboBox#XComboBox::drop-down {
 
 QComboBox#XComboBox::down-arrow {
     margin-right: 4px;
+    padding-top: 4px;
     image: url(:/resources/graphics/down-arrow.png);
     width: 14px;
     height: 14px;
