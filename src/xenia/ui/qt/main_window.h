@@ -26,9 +26,14 @@ class MainWindow final : public Themeable<QtWindow> {
 
   const XStatusBar* status_bar() const { return status_bar_; }
 
+ protected slots:
+  void OnActiveThemeChanged(Theme* theme);
+  void OnThemeReloaded();
+
  private:
   XShell* shell_ = nullptr;
   XStatusBar* status_bar_ = nullptr;
+  QMetaObject::Connection hot_reload_signal_;
 };
 
 }  // namespace qt

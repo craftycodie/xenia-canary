@@ -41,6 +41,9 @@ class ThemeManager : public QObject {
   void EnableHotReload();
   void DisableHotReload();
 
+ signals:
+  void OnActiveThemeChanged(Theme* theme);
+
  private slots:
   void OnThemeDirectoryChanged(const QString& path);
 

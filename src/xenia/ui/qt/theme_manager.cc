@@ -105,7 +105,9 @@ void ThemeManager::SetActiveTheme(Theme* theme) {
 
   active_theme_ = theme;
 
-  active_theme_->ReloadTheme(); // TODO: do we need to refresh?
+  active_theme_->ReloadTheme();  // TODO: do we need to refresh?
+
+  emit OnActiveThemeChanged(active_theme_);
 }
 
 void ThemeManager::EnableHotReload() {
@@ -113,8 +115,8 @@ void ThemeManager::EnableHotReload() {
 
   // reset watcher and rebind callback signal
   watcher_.reset(new QFileSystemWatcher());
-  connect(watcher_.get(), SIGNAL(fileChanged(QString)), this,
-          SLOT(OnThemeDirectoryChanged(QString)));
+  connect(watcher_.get(), &QFileSystemWatcher::fileChanged, this,
+          &ThemeManager::OnThemeDirectoryChanged);
 
   // iterate over all files in theme dir, adding each to the file watcher
   for (const auto& theme : themes_) {

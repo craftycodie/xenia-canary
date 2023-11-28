@@ -8,7 +8,6 @@
 namespace xe {
 namespace ui {
 namespace qt {
-
 bool MainWindow::OpenImpl() {
   // Custom Frame Border
   // Disable for now until windows aero additions are added
@@ -30,6 +29,16 @@ bool MainWindow::OpenImpl() {
                            .arg(XE_BUILD_DATE));
   status_bar_->addPermanentWidget(build_label);
 
+  ThemeManager& theme_manager = ThemeManager::Instance();
+  connect(&theme_manager, &ThemeManager::OnActiveThemeChanged, this,
+          &MainWindow::OnActiveThemeChanged);
+
+  Theme* active_theme = theme_manager.current_theme();
+  if (active_theme) {
+    connect(active_theme, &Theme::ThemeReloaded, this,
+            &MainWindow::OnThemeReloaded);
+  }
+
   QtWindow::OpenImpl();
   return true;
 }
@@ -46,6 +55,16 @@ void MainWindow::RemoveStatusBarWidget(QWidget* widget) {
   return status_bar_->removeWidget(widget);
 }
 
+void MainWindow::OnActiveThemeChanged(Theme* theme) {
+  assert_true(theme != nullptr);
+
+  disconnect(hot_reload_signal_);
+  connect(theme, &Theme::ThemeReloaded, this, &MainWindow::OnThemeReloaded);
+}
+
+void MainWindow::OnThemeReloaded() {
+  status_bar_->showMessage(QStringLiteral("Theme Reloaded"), 3000);
+}
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe
