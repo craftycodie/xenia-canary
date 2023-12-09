@@ -365,6 +365,9 @@ dword_result_t NetDll_WSAStartup_entry(dword_t caller, word_t version,
   // NetDll_WSAStartup is called multiple times?
   XELOGI("NetDll_WSAStartup");
 
+  // Must initialise XLiveAPI inside kernel to guarantee timing/race conditions.
+  XLiveAPI::Init();
+
 // TODO(benvanik): abstraction layer needed.
 #ifdef XE_PLATFORM_WIN32
   WSADATA wsaData;
@@ -604,6 +607,9 @@ dword_result_t NetDll_XNetGetTitleXnAddr_entry(dword_t caller,
 
   // Halo 3 calls NetDll_XNetGetTitleXnAddr before NetDll_WSAStartup
   
+  // Must initialise XLiveAPI inside kernel to guarantee timing/race conditions.
+  XLiveAPI::Init();
+
   auto status = XnAddrStatus::XNET_GET_XNADDR_STATIC |
                 XnAddrStatus::XNET_GET_XNADDR_GATEWAY |
                 XnAddrStatus::XNET_GET_XNADDR_DNS;
@@ -707,7 +713,9 @@ dword_result_t NetDll_XNetServerToInAddr_entry(dword_t caller, dword_t server_ad
          (uint32_t)pina.guest_address());
   pina->s_addr = htonl(server_addr);
 
-  XELOGI("Server IP: {}", XLiveAPI::ip_to_string(*pina));
+  if (cvars::logging) {
+    XELOGI("Server IP: {}", XLiveAPI::ip_to_string(*pina));
+  }
 
   return X_ERROR_SUCCESS;
 }
