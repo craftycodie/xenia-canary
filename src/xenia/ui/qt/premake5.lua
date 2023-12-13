@@ -43,7 +43,7 @@ project("xenia-ui-qt")
     "qt_demoapp.cc",
   })
  
-group("src")
+group("demos")
 project("xenia-ui-qt-demoapp")
   uuid("b46e0512-b0cb-4a02-90c6-c23db81c6de3")
   kind("WindowedApp")
