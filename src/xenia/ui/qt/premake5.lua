@@ -24,8 +24,17 @@ project("xenia-ui-qt")
   links({
     "xenia-base",
     "xenia-core",
-    "xenia-ui"
+    "xenia-ui",
+    "xenia-hid",
+    "xenia-hid-sdl",
+    "xenia-helper-sdl"
   })
+  filter "platforms:Windows"
+    links({
+      "xenia-hid-xinput"
+    })
+  filter {}
+
   defines({
 
   })
