@@ -65,7 +65,7 @@ filter({"configurations:Checked", "platforms:Linux"})
   })
 
 filter("configurations:Debug")
-  runtime("Release")
+  runtime("Debug")
   optimize("Off")
   defines({
     "DEBUG",
@@ -178,6 +178,7 @@ filter("platforms:Windows")
   defines({
     "_CRT_NONSTDC_NO_DEPRECATE",
     "_CRT_SECURE_NO_WARNINGS",
+    "_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING", -- https://github.com/Necktschnagge/cmake-qt-prototype/pull/42
     "WIN32",
     "_WIN64=1",
     "_AMD64=1",
