@@ -1,8 +1,10 @@
 #include "xenia/ui/qt/main_window.h"
 
+#include <QMessageBox>
 #include <QVBoxLayout>
 
 #include "build/version.h"
+#include "events/hid_event.h"
 #include "xenia/base/logging.h"
 #include "xenia/ui/qt/widgets/status_bar.h"
 
@@ -16,49 +18,13 @@ DECLARE_string(hid);
 namespace xe {
 namespace ui {
 namespace qt {
-
 MainWindow::MainWindow(WindowedAppContext& app_context, std::string_view title,
                        uint32_t width, uint32_t height)
-    : Themeable<QtWindow>("MainWindow", app_context, title, width, height) {
-  CreateInputSystem();
-}
-
-void MainWindow::CreateInputSystem() {
-  input_system_ = std::make_unique<hid::InputSystem>(this);
-  size_t z_order = 0;  // z-order unused for controller inputs in the UI
-
-  // TODO: in future this may need logic to determine if a game is running
-  auto driver_active_cb = [this]() -> bool { return true; };
-
-  std::string real_hid = cvars::hid;
-  if (cvars::hid == "any") {
-#if XE_PLATFORM_WIN32
-    real_hid = "xinput";
-#else
-    real_hid = "sdl";
-#endif
-  }
-
-  std::vector<std::unique_ptr<hid::InputDriver>> drivers;
-
-  // We are only interested in SDL or XInput here as Qt can handle kb+mouse events itself
-  if (real_hid == "sdl") {
-    auto driver = xe::hid::sdl::Create(this, z_order);
-    drivers.emplace_back(std::move(driver));
-  } else if (real_hid == "xinput") {
-#if XE_PLATFORM_WIN32
-    auto driver = xe::hid::xinput::Create(this, z_order);
-    drivers.emplace_back(std::move(driver));
-#else
-    assert_always("XInput selected for unsupported OS");
-#endif
-  }
-
-  for (auto& driver : drivers) {
-    if (XSUCCEEDED(driver->Setup())) {
-      driver->set_is_active_callback(driver_active_cb);
-      input_system_->AddDriver(std::move(driver));
-    }
+    : Themeable<QtWindow>("MainWindow", app_context, title, width, height),
+      input_helper_(new HidHelper(this)) {
+  if (!input_helper_->Initialize()) {
+    XELOGW("Failed to initialize HID Helper object");
+    input_helper_->deleteLater();
   }
 }
 
@@ -93,19 +59,6 @@ bool MainWindow::OpenImpl() {
             &MainWindow::OnThemeReloaded);
   }
 
-  // set up input poll timer as Qt's event loop has no tick() function
-  {
-    using namespace std::chrono_literals;
-
-    input_process_timer_ = new QTimer(this);
-    input_process_timer_->setInterval(16ms);
-
-    connect(input_process_timer_, &QTimer::timeout, this,
-            &MainWindow::PollInputStatus);
-
-    input_process_timer_->start();
-  }
-
   QtWindow::OpenImpl();
   return true;
 }
@@ -133,21 +86,22 @@ void MainWindow::OnThemeReloaded() {
   status_bar_->showMessage(QStringLiteral("Theme Reloaded"), 3000);
 }
 
-void MainWindow::PollInputStatus() {
-  using namespace xe::hid;
+bool MainWindow::event(QEvent* event) {
+  if (event->type() == HidEvent::ButtonPressType) {
+    auto button_event = static_cast<ButtonPressEvent*>(event);
+    if (button_event->buttons() & kInputDpadDown &&
+        !button_event->is_repeat()) {
+      QWidget* focused = QApplication::focusWidget();
+      QWidget* next = focused ? focused->nextInFocusChain() : nullptr;
+      if (next) {
+        next->setFocus(Qt::FocusReason::TabFocusReason);
+      }
+    }
 
-  int user_index = 0; // only allow main user to control UI
-
-  X_INPUT_STATE state{};
-  if (input_system_->GetState(user_index, &state) != X_ERROR_SUCCESS) {
-    return;
+    return true;
   }
 
-  const auto& gamepad = state.gamepad;
-
-  if (gamepad.buttons & X_INPUT_GAMEPAD_A) {
-    DebugBreak();
-  }
+  return Themeable<QtWindow>::event(event);
 }
 
 }  // namespace qt

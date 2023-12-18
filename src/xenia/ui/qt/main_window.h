@@ -4,8 +4,9 @@
 #include <QMainWindow>
 #include <QTimer>
 
+#include "helpers/hid_helper.h"
 #include "window_qt.h"
-#include "xenia/hid/input_system.h"
+
 #include "xenia/ui/qt/themeable_widget.h"
 #include "xenia/ui/qt/widgets/shell.h"
 
@@ -28,20 +29,18 @@ class MainWindow final : public Themeable<QtWindow> {
 
   const XStatusBar* status_bar() const { return status_bar_; }
 
+ protected:
+  bool event(QEvent* event) override;
+
  protected slots:
   void OnActiveThemeChanged(Theme* theme);
   void OnThemeReloaded();
-
- protected:
-  void CreateInputSystem();
-  void PollInputStatus();
 
  private:
   XShell* shell_ = nullptr;
   XStatusBar* status_bar_ = nullptr;
   QMetaObject::Connection hot_reload_signal_;
-  std::unique_ptr<hid::InputSystem> input_system_;
-  QTimer* input_process_timer_;
+  HidHelper* input_helper_;
 };
 
 }  // namespace qt
