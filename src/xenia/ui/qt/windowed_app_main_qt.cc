@@ -39,6 +39,8 @@ using xe::ui::qt::QtWindowedAppContext;
 int main(int argc, char** argv) {
   Q_INIT_RESOURCE(xenia);
 
+  QtWindowedAppContext app_context(argc, argv);
+
   QCoreApplication::setApplicationName("Xenia");
   QCoreApplication::setOrganizationName(
       "Xenia Xbox 360 Emulator Research Project");
@@ -47,16 +49,12 @@ int main(int argc, char** argv) {
   QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
       Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
-  QApplication qt_app(argc, argv);
-
   // Load Fonts
   QFontDatabase fonts;
   fonts.addApplicationFont(":/resources/fonts/SegMDL2.ttf");
   fonts.addApplicationFont(":/resources/fonts/segoeui.ttf");
   fonts.addApplicationFont(":/resources/fonts/segoeuisb.ttf");
   QApplication::setFont(QFont("Segoe UI"));
-
-  QtWindowedAppContext app_context;
 
   std::unique_ptr<xe::ui::WindowedApp> app =
       xe::ui::GetWindowedAppCreator()(app_context);
@@ -74,12 +72,10 @@ int main(int argc, char** argv) {
   xe::InitializeWin32App(app->GetName());
 #endif
 
-  int result = app->OnInitialize() ? app_context.RunMainMessageLoop(qt_app)
-                                   : EXIT_FAILURE;
+  int result =
+      app->OnInitialize() ? app_context.RunMainMessageLoop() : EXIT_FAILURE;
 
   app->InvokeOnDestroy();
-
-  // int result = qt_app.exec();
 
   return result;
 }

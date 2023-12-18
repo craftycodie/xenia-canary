@@ -16,7 +16,8 @@ namespace xe {
 namespace ui {
 namespace qt {
 
-QtWindowedAppContext::QtWindowedAppContext() = default;
+QtWindowedAppContext::QtWindowedAppContext(int& argc, char** argv)
+    : instance_(argc, argv) {}
 QtWindowedAppContext::~QtWindowedAppContext() = default;
 
 void QtWindowedAppContext::NotifyUILoopOfPendingFunctions() {
@@ -40,9 +41,7 @@ void QtWindowedAppContext::NotifyUILoopOfPendingFunctions() {
                             Q_ARG(uint64_t, 0));
 }
 
-int QtWindowedAppContext::RunMainMessageLoop(QApplication& app) {
-  return app.exec();
-}
+int QtWindowedAppContext::RunMainMessageLoop() { return instance_.exec(); }
 
 void QtWindowedAppContext::PlatformQuitFromUIThread() {
   // fire the QApplication::quit method on the UI thread

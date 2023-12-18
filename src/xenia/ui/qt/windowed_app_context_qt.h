@@ -10,9 +10,8 @@
 #ifndef XENIA_UI_WINDOWED_APP_CONTEXT_QT_H_
 #define XENIA_UI_WINDOWED_APP_CONTEXT_QT_H_
 
+#include "application.h"
 #include "xenia/ui/windowed_app_context.h"
-
-class QApplication;
 
 namespace xe {
 namespace ui {
@@ -20,15 +19,18 @@ namespace qt {
 
 class QtWindowedAppContext : public WindowedAppContext {
  public:
-  explicit QtWindowedAppContext();
+  explicit QtWindowedAppContext(int& argc, char** argv);
 
   ~QtWindowedAppContext() override;
 
-  int RunMainMessageLoop(QApplication& app);
+  int RunMainMessageLoop();
 
  protected:
   void NotifyUILoopOfPendingFunctions() override;
   void PlatformQuitFromUIThread() override;
+
+ private:
+  XApplication instance_;
 };
 
 }  // namespace qt
