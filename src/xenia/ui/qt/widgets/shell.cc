@@ -1,5 +1,7 @@
-
 #include "xenia/ui/qt/widgets/shell.h"
+
+#include <QMessageBox>
+#include "xenia/ui/qt/events/hid_event.h"
 
 namespace xe {
 namespace ui {
@@ -36,7 +38,35 @@ void XShell::BuildTabStack() {
   }
 }
 
-void XShell::TabChanged(XTab* tab) { tab_stack_->setCurrentWidget(tab); }
+void XShell::TabChanged(XTab* tab) {
+  tab_stack_->setCurrentWidget(tab);
+  tab->setFocus(Qt::FocusReason::TabFocusReason);
+}
+
+bool XShell::event(QEvent* event) {
+  if (event->type() == HidEvent::ButtonPressType) {
+    auto button_event = static_cast<ButtonPressEvent*>(event);
+    if (button_event->is_repeat()) return true;  // skip repeat triggers
+
+    int tab_index = nav_->active_tab_index();
+
+    if (button_event->buttons() & kInputRightShoulder) {
+      tab_index++;
+      nav_->SetActiveTabByIndex(tab_index);
+
+      event->accept();
+      return true;
+    } else if (button_event->buttons() & kInputLeftShoulder) {
+      tab_index--;
+      nav_->SetActiveTabByIndex(tab_index);
+
+      event->accept();
+      return true;
+    }
+  }
+
+  return QWidget::event(event);
+}
 
 }  // namespace qt
 }  // namespace ui

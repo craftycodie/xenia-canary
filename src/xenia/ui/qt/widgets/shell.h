@@ -22,6 +22,9 @@ class XShell : public Themeable<QWidget> {
  public:
   explicit XShell(QMainWindow* window);
 
+ protected:
+  bool event(QEvent* event) override;
+
  public slots:
   void TabChanged(XTab* tab);
 

@@ -19,7 +19,13 @@ class XNav : public Themeable<QWidget> {
   explicit XNav();
 
   XTab* active_tab() const { return tab_selector_->getActiveTab(); }
-  std::vector<XTab*> tabs() const { return tab_selector_->getTabs(); }
+  int active_tab_index() const { return tab_selector_->getActiveTabIndex(); }
+
+  const std::vector<XTab*>& tabs() const { return tab_selector_->getTabs(); }
+
+ public slots:
+  bool SetActiveTab(XTab* tab);
+  bool SetActiveTabByIndex(int index);
 
  signals:
   void TabChanged(XTab* tab);

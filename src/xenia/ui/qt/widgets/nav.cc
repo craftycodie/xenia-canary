@@ -59,6 +59,25 @@ void XNav::BuildTabs() {
           SIGNAL(TabChanged(XTab*)));
 }
 
+bool XNav::SetActiveTab(XTab* tab) {
+  const auto& tabs = tab_selector_->getTabs();
+  if (std::find(tabs.begin(), tabs.end(), tab) != tabs.end()) {
+    tab_selector_->SetTab(tab);
+    return true;
+  }
+
+  return false;
+}
+
+bool XNav::SetActiveTabByIndex(int index) {
+  const auto& tabs = tab_selector_->getTabs();
+  if (tabs.size() <= index) {
+    return false;
+  }
+
+  return SetActiveTab(tabs[index]);
+}
+
 }  // namespace qt
 }  // namespace ui
 }  // namespace xe

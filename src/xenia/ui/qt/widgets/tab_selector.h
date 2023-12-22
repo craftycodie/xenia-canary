@@ -35,6 +35,14 @@ class XTabSelector : public Themeable<QWidget> {
     Rebuild();
   }
   XTab* getActiveTab() const { return active_tab_; }
+  int getActiveTabIndex() const {
+    auto it = std::find(tabs_.begin(), tabs_.end(), active_tab_);
+    if (it != tabs_.end()) {
+      return it - tabs_.begin();
+    }
+
+    return 0;
+  }
 
   QColor getBarColor() const { return bar_color_; }
   void setBarColor(const QColor& color) { bar_color_ = color; }
@@ -78,7 +86,8 @@ class XTabSelector : public Themeable<QWidget> {
     tab_spacing_ = spacing;
     Rebuild();
   }
-  std::vector<XTab*> getTabs() const { return tabs_; }
+
+  const std::vector<XTab*>& getTabs() const { return tabs_; }
 
   void Rebuild() { needs_build_ = true; }
 
