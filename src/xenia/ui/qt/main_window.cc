@@ -87,15 +87,30 @@ void MainWindow::OnThemeReloaded() {
 }
 
 bool MainWindow::event(QEvent* event) {
+  // method to access protected properties and methods on QWidget*
+  // https://stackoverflow.com/a/52318892
+  // we are using to access focusNextPrevChild(). This is because
+  // the public method nextInFocusChain() was returning widgets that weren't
+  // interactable, but focusNextPrevChild() behaved exactly as you'd expect for
+  // controller input.
+  using Method = bool (QWidget::*)(bool);
+  struct Helper : QWidget {
+    static Method get_focusNextPrevChild() {
+      return &Helper::focusNextPrevChild;
+    }
+  };
+  static Method const focusNextPrevChildProxy =
+      Helper::get_focusNextPrevChild();
+
   if (event->type() == HidEvent::ButtonPressType) {
     auto button_event = static_cast<ButtonPressEvent*>(event);
-    if (button_event->buttons() & kInputDpadDown &&
+    auto buttons = button_event->buttons();
+    if (buttons & (kInputDpadDown | kInputDpadUp) &&
         !button_event->is_repeat()) {
       QWidget* focused = QApplication::focusWidget();
-      QWidget* next = focused ? focused->nextInFocusChain() : nullptr;
-      if (next) {
-        next->setFocus(Qt::FocusReason::TabFocusReason);
-      }
+      // invoke focusNextPrevChild via our helper
+      bool forward = !!(buttons & kInputDpadDown);
+      std::invoke(focusNextPrevChildProxy, focused, forward);
     }
 
     return true;
