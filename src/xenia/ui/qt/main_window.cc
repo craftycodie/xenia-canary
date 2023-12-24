@@ -33,8 +33,6 @@ bool MainWindow::OpenImpl() {
   // Disable for now until windows aero additions are added
   // setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
 
-  this->setFocusPolicy(Qt::StrongFocus);
-
   shell_ = new XShell(this);
   this->setCentralWidget(shell_);
 
