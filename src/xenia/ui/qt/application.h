@@ -20,9 +20,12 @@ class XApplication : public QApplication {
   Q_OBJECT
 
  public:
-  XApplication(int& argc, char** argv) : QApplication(argc, argv) {}
+  XApplication(int& argc, char** argv);
 
   bool notify(QObject*, QEvent*) override;
+
+protected:
+  virtual void OnFocusChanged(QWidget* old_widget, QWidget* new_widget);
 };
 
 }  // namespace qt

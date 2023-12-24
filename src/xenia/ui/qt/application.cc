@@ -11,9 +11,17 @@
 
 #include <QWidget>
 
+#include "xenia/base/logging.h"
+
 namespace xe {
 namespace ui {
 namespace qt {
+
+XApplication::XApplication(int& argc, char** argv)
+    : QApplication(argc, argv) {
+  connect(this, &QApplication::focusChanged, this,
+          &XApplication::OnFocusChanged);
+}
 
 bool XApplication::notify(QObject* object, QEvent* event) {
   // Custom event types aren't propagated automatically
@@ -39,6 +47,15 @@ bool XApplication::notify(QObject* object, QEvent* event) {
   }
 
   return QApplication::notify(object, event);
+}
+
+void XApplication::OnFocusChanged(QWidget* old_widget, QWidget* new_widget) {
+#if DEBUG
+  if (old_widget && new_widget) {
+    XELOGD("Widget focus change: {} -> {}", old_widget->objectName().toUtf8(),
+           new_widget->objectName().toUtf8());
+  }
+#endif
 }
 
 }  // namespace qt
