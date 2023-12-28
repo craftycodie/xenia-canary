@@ -11,12 +11,24 @@
       "value": "#282828"
     },
     {
+      "name": "accentUltraLight",
+      "value": "#96EEBA"
+    },
+    {
+      "name": "accentLight",
+      "value": "#73E8A4"
+    },
+    {
       "name": "accent",
       "value": "#5CE494"
     },
     {
       "name": "accentDark",
       "value": "#4AA971"
+    },
+    {
+      "name": "accentUltraDark",
+      "value": "#388056"
     },
     {
       "name": "tertiary",
