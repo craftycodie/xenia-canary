@@ -2,6 +2,7 @@
 
 #include <QMessageBox>
 #include <QVBoxLayout>
+#include <QAbstractButton>
 
 #include "build/version.h"
 #include "events/hid_event.h"
@@ -102,16 +103,25 @@ bool MainWindow::event(QEvent* event) {
 
   if (event->type() == HidEvent::ButtonPressType) {
     auto button_event = static_cast<ButtonPressEvent*>(event);
+    bool is_repeat = button_event->is_repeat();
     auto buttons = button_event->buttons();
-    if (buttons & (kInputDpadDown | kInputDpadUp) &&
-        !button_event->is_repeat()) {
-      QWidget* focused = QApplication::focusWidget();
+    QWidget* focused = QApplication::focusWidget();
+
+    // handle dpad
+    if (buttons & (kInputDpadDown | kInputDpadUp) && !is_repeat) {
       // invoke focusNextPrevChild via our helper
       bool forward = !!(buttons & kInputDpadDown);
       std::invoke(focusNextPrevChildProxy, focused, forward);
+
+      return true;
     }
 
-    return true;
+    // handle A button
+    if (buttons & kInputButtonA && !is_repeat) {
+      if (auto button = qobject_cast<QAbstractButton*>(focused)) {
+        button->click();
+      }
+    }
   }
 
   return Themeable<QtWindow>::event(event);
