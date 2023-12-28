@@ -27,6 +27,7 @@ void GeneralPane::Build() {
 
   // Setup scroll area for settings pane
   XScrollArea* scroll_area = new XScrollArea(this);
+  scroll_area->setFocusProxy(base_widget);
   scroll_area->setWidget(base_widget);
   scroll_area->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   scroll_area->setWidgetResizable(true);

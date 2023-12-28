@@ -13,5 +13,13 @@ QPushButton:pressed {
 }
 
 QPushButton:checked {
+  background-color: $accentDark;
+}
+
+QPushButton:focus {
   background-color: $dark2;
+}
+
+QPushButton:focus:checked {
+  background-color: $accentUltraDark;
 }

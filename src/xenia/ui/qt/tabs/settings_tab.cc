@@ -43,7 +43,7 @@ void SettingsTab::Build() {
 
   QScrollArea* scroll_area = new QScrollArea(this);
   scroll_area->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
+  scroll_area->setFocusProxy(content_widget_);
   scroll_area->setWidget(content_widget_);
   scroll_area->setWidgetResizable(true);
 
@@ -53,6 +53,7 @@ void SettingsTab::Build() {
 void SettingsTab::BuildSidebar() {
   sidebar_container_ = new QWidget(this);
   sidebar_container_->setObjectName("sidebarContainer");
+  sidebar_container_->setFocusPolicy(Qt::FocusPolicy::NoFocus);
 
   QVBoxLayout* sidebar_layout = new QVBoxLayout;
   sidebar_layout->setContentsMargins(0, 0, 0, 0);
@@ -110,7 +111,7 @@ void SettingsTab::BuildSidebar() {
     SettingsPane* pane = *it;
     auto btn = sidebar_->addAction(pane->glyph(), pane->title());
     btn->setCheckable(true);
-    bg->addButton(btn);
+    //bg->addButton(btn);
 
     // set the first item to checked
     if (counter == 0) {
