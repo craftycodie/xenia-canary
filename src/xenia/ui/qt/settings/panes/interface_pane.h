@@ -10,7 +10,8 @@ namespace qt {
 class InterfacePane : public SettingsPane {
   Q_OBJECT
  public:
-  explicit InterfacePane() : SettingsPane(QChar(0xE790), "Interface") {}
+  explicit InterfacePane(QWidget* parent = nullptr)
+      : SettingsPane(QChar(0xE790), "Interface", parent) {}
 
   void Build() override;
 };

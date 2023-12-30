@@ -10,7 +10,8 @@ namespace qt {
 class CPUPane : public SettingsPane {
   Q_OBJECT
  public:
-  explicit CPUPane() : SettingsPane(QChar(0xEC4A), "CPU") {}
+  explicit CPUPane(QWidget* parent = nullptr)
+      : SettingsPane(QChar(0xEC4A), "CPU", parent) {}
 
   void Build() override;
 };

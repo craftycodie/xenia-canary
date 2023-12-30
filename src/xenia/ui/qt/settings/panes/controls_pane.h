@@ -10,7 +10,8 @@ namespace qt {
 class ControlsPane : public SettingsPane {
   Q_OBJECT
  public:
-  explicit ControlsPane() : SettingsPane(QChar(0xE7FC), "Controls") {}
+  explicit ControlsPane(QWidget* parent = nullptr)
+      : SettingsPane(QChar(0xE7FC), "Controls", parent) {}
 
   void Build() override;
 };

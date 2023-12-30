@@ -5,8 +5,8 @@
 #include <QStackedLayout>
 #include <QStackedWidget>
 
+#include "xenia/ui/qt/tabs/split_tab.h"
 #include "xenia/ui/qt/widgets/sidebar.h"
-#include "xenia/ui/qt/widgets/tab.h"
 
 namespace xe {
 namespace ui {
@@ -14,22 +14,12 @@ namespace qt {
 
 class XTabSelector;
 
-// TODO: should this be in its own file for reusability?
-// Represents a sidebar item and a widget that is shown when the item is clicked
-struct SidebarItem {
-  QChar glyph;
-  const char* name;
-  QWidget* widget;
-};
-
-class DebugTab : public XTab {
+class DebugTab final : public SplitTab {
   Q_OBJECT
  public:
   explicit DebugTab();
 
  private:
-  void Build();
-  void BuildSidebar();
 
   QWidget* CreateComponentsTab();
   QWidget* CreateNavigationTab();
@@ -50,12 +40,6 @@ class DebugTab : public XTab {
                             QStackedLayout* tab_stack_layout);
   QWidget* CreateTab3Widget(XTabSelector* tab_selector,
                             QStackedLayout* tab_stack_layout);
-
-  QHBoxLayout* layout_ = nullptr;
-  QWidget* sidebar_container_ = nullptr;
-  XSideBar* sidebar_ = nullptr;
-  QStackedWidget* content_widget_ = nullptr;
-  QList<SidebarItem> sidebar_items_;
 };
 
 }  // namespace qt

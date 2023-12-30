@@ -7,6 +7,7 @@
 #include "xenia/base/cvar.h"
 #include "xenia/config.h"
 #include "xenia/ui/qt/settings/settings_widget_factory.h"
+#include "xenia/ui/qt/tabs/split_tab.h"
 #include "xenia/ui/qt/themeable_widget.h"
 
 namespace xe {
@@ -33,6 +34,9 @@ class SettingsPane : public Themeable<QWidget> {
   QWidget* widget() const { return widget_; }
 
   virtual void Build() = 0;
+
+  // for compat with qt::SplitTab
+  operator SidebarItem() const { return SidebarItem{glyph_, title_, widget_}; }
 
  protected:
   void set_widget(QWidget* widget) { widget_ = widget; }

@@ -6,6 +6,7 @@
 #include <QStackedWidget>
 #include <QVector>
 
+#include "split_tab.h"
 #include "xenia/ui/qt/widgets/sidebar.h"
 #include "xenia/ui/qt/widgets/tab.h"
 
@@ -15,19 +16,12 @@ namespace qt {
 
 class SettingsPane;
 
-class SettingsTab : public XTab {
+class SettingsTab : public SplitTab {
   Q_OBJECT
  public:
   explicit SettingsTab();
 
  private:
-  void Build();
-  void BuildSidebar();
-
-  QHBoxLayout* layout_ = nullptr;
-  QWidget* sidebar_container_ = nullptr;
-  XSideBar* sidebar_ = nullptr;
-  QStackedWidget* content_widget_ = nullptr;
   QList<SettingsPane*> settings_panes_;
 };
 

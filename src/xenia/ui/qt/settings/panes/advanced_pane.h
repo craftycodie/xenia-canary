@@ -10,7 +10,8 @@ namespace qt {
 class AdvancedPane : public SettingsPane {
   Q_OBJECT
  public:
-  explicit AdvancedPane() : SettingsPane(QChar(0xE7BA), "Advanced") {}
+  explicit AdvancedPane(QWidget* parent = nullptr)
+      : SettingsPane(QChar(0xE7BA), "Advanced", parent) {}
 
   void Build() override;
 };
