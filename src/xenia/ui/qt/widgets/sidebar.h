@@ -18,8 +18,13 @@ class XSideBar : public Themeable<QToolBar> {
 
   QWidget* addSpacing(int size);
 
+  QButtonGroup* buttons() const { return buttons_; }
+
+ protected:
+  bool event(QEvent* event) override;
+
  private:
-  QVector<XSideBarButton*> buttons_;
+  QButtonGroup* buttons_;
 };
 
 }  // namespace qt

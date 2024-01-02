@@ -86,8 +86,6 @@ void SplitTab::Build() {
 
     sidebar_->addSpacing(20);
 
-    QButtonGroup* bg = new QButtonGroup();
-
     // loop over sidebar button items and connect them to slots
     int counter = 0;
     for (auto it = sidebar_items_.begin(); it != sidebar_items_.end();
@@ -95,7 +93,6 @@ void SplitTab::Build() {
       SidebarItem& item = *it;
       auto btn = sidebar_->addAction(item.glyph(), item.title());
       btn->setCheckable(true);
-      bg->addButton(btn);
 
       // set the first item to checked
       if (counter == 0) {
