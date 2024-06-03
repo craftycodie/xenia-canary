@@ -41,6 +41,8 @@ DEFINE_uint32(max_signed_profiles, 4,
 DEFINE_uint32(kernel_build_version, 1888, "Define current kernel version",
               "Kernel");
 
+DEFINE_bool(apply_module_update, false, "Apply module updates.", "Kernel");
+
 namespace xe {
 namespace kernel {
 
@@ -520,7 +522,23 @@ X_RESULT KernelState::ApplyTitleUpdate(const object_ref<UserModule> module) {
       content_manager()->OpenContent("UPDATE", title_update, disc_number);
 
   // Use the corresponding patch for the launch module
-  std::filesystem::path patch_xexp = fmt::format("{0}.xexp", module->name());
+  std::filesystem::path patch_xexp;
+
+  if (cvars::apply_module_update) {
+    std::string mount_path = "";
+    file_system()->FindSymbolicLink("game:", mount_path);
+
+    auto is_relative = std::filesystem::relative(module->path(), mount_path);
+
+    if (is_relative.empty()) {
+      return X_STATUS_UNSUCCESSFUL;
+    }
+
+    patch_xexp =
+        is_relative.replace_extension(is_relative.extension().string() + "p");
+  } else {
+    patch_xexp = fmt::format("{0}.xexp", module->name());
+  }
 
   std::string resolved_path = "";
   file_system()->FindSymbolicLink("UPDATE:", resolved_path);
