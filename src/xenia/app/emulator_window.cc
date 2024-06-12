@@ -65,6 +65,8 @@ DECLARE_string(api_list);
 
 DECLARE_bool(upnp);
 
+DECLARE_string(network_guid);
+
 DEFINE_bool(fullscreen, false, "Whether to launch the emulator in fullscreen.",
             "Display");
 
@@ -678,7 +680,9 @@ bool EmulatorWindow::Initialize() {
   // Netplay menu.
   auto Netplay_menu = MenuItem::Create(MenuItem::Type::kPopup, "&Netplay");
   auto API_list_menu =
-      MenuItem::Create(MenuItem::Type::kPopup, "&API addresses");
+      MenuItem::Create(MenuItem::Type::kPopup, "&API Addresses");
+  auto Network_interfaces_menu =
+      MenuItem::Create(MenuItem::Type::kPopup, "&Network Interfaces");
   {
     Netplay_menu->AddChild(
         MenuItem::Create(MenuItem::Type::kString, "&Status", "",
@@ -690,7 +694,27 @@ bool EmulatorWindow::Initialize() {
           std::bind(&EmulatorWindow::SetAPIAddress, this, api_address)));
     }
 
+    // Discover network interfaces so we can display them
+    xe::kernel::XLiveAPI::DiscoverNetworkInterfaces();
+
+    Network_interfaces_menu->AddChild(MenuItem::Create(
+        MenuItem::Type::kString, "Reset Network Interface", "",
+        std::bind(&EmulatorWindow::SetNetworkInterfaceByGUID, this, "")));
+
+    Network_interfaces_menu->AddChild(
+        MenuItem::Create(MenuItem::Type::kSeparator));
+
+    for (auto const& [guid, adapter] : xe::kernel::XLiveAPI::network_adapters) {
+      std::string interface_name =
+          xe::kernel::XLiveAPI::GetNetworkFriendlyName(*adapter);
+
+      Network_interfaces_menu->AddChild(MenuItem::Create(
+          MenuItem::Type::kString, interface_name, "",
+          std::bind(&EmulatorWindow::SetNetworkInterfaceByGUID, this, guid)));
+    }
+
     Netplay_menu->AddChild(std::move(API_list_menu));
+    Netplay_menu->AddChild(std::move(Network_interfaces_menu));
   }
   main_menu->AddChild(std::move(Netplay_menu));
 
@@ -1237,6 +1261,10 @@ void EmulatorWindow::SetAPIAddress(std::string api_address) {
   xe::kernel::XLiveAPI::SetAPIAddress(api_address);
 }
 
+void EmulatorWindow::SetNetworkInterfaceByGUID(std::string guid) {
+  xe::kernel::XLiveAPI::SetNetworkInterfaceByGUID(guid);
+}
+
 void EmulatorWindow::ToggleDisplayConfigDialog() {
   if (!display_config_dialog_) {
     display_config_dialog_ = std::unique_ptr<DisplayConfigDialog>(
@@ -1666,6 +1694,19 @@ void EmulatorWindow::NetplayStatus() {
   std::string msg = "";
 
   msg += "API Address: " + cvars::api_address;
+  msg += "\n";
+
+  if (xe::kernel::XLiveAPI::interface_name.empty()) {
+    if (cvars::network_guid.empty()) {
+      msg += fmt::format("Network Interface: Unspecified Network");
+    } else {
+      msg += fmt::format("Network Interface GUID: {}", cvars::network_guid);
+    }
+  } else {
+    msg += fmt::format("Network Interface: {}",
+                       xe::kernel::XLiveAPI::interface_name);
+  }
+
   msg += "\n";
 
   msg +=
