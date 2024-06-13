@@ -169,9 +169,10 @@ class XLiveAPI {
   inline static std::vector<XTitleServer> xlsp_servers{};
 
   inline static std::string interface_name;
-  inline static std::unique_ptr<IP_ADAPTER_ADDRESSES[]> adapter_addresses{};
-  inline static std::map<std::string, std::unique_ptr<IP_ADAPTER_ADDRESSES>>
-      network_adapters{};
+
+  inline static std::vector<uint8_t> adapter_addresses_buf{};
+
+  inline static std::vector<IP_ADAPTER_ADDRESSES> adapter_addresses{};
 
   inline static std::map<uint32_t, uint64_t> sessionIdCache{};
   inline static std::map<uint32_t, uint64_t> macAddressCache{};

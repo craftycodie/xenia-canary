@@ -694,9 +694,6 @@ bool EmulatorWindow::Initialize() {
           std::bind(&EmulatorWindow::SetAPIAddress, this, api_address)));
     }
 
-    // Discover network interfaces so we can display them
-    xe::kernel::XLiveAPI::DiscoverNetworkInterfaces();
-
     Network_interfaces_menu->AddChild(MenuItem::Create(
         MenuItem::Type::kString, "Reset Network Interface", "",
         std::bind(&EmulatorWindow::SetNetworkInterfaceByGUID, this, "")));
@@ -704,13 +701,15 @@ bool EmulatorWindow::Initialize() {
     Network_interfaces_menu->AddChild(
         MenuItem::Create(MenuItem::Type::kSeparator));
 
-    for (auto const& [guid, adapter] : xe::kernel::XLiveAPI::network_adapters) {
+    for (auto& adapter : xe::kernel::XLiveAPI::adapter_addresses) {
+      std::string guid = adapter.AdapterName;
       std::string interface_name =
-          xe::kernel::XLiveAPI::GetNetworkFriendlyName(*adapter);
+          xe::kernel::XLiveAPI::GetNetworkFriendlyName(adapter);
 
-      Network_interfaces_menu->AddChild(MenuItem::Create(
-          MenuItem::Type::kString, interface_name, "",
-          std::bind(&EmulatorWindow::SetNetworkInterfaceByGUID, this, guid)));
+      Network_interfaces_menu->AddChild(
+          MenuItem::Create(MenuItem::Type::kString, interface_name, "",
+                           std::bind(&EmulatorWindow::SetNetworkInterfaceByGUID,
+                                     this, adapter.AdapterName)));
     }
 
     Netplay_menu->AddChild(std::move(API_list_menu));
