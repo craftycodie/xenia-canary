@@ -552,7 +552,7 @@ void EmulatorApp::EmulatorThread() {
   }
 
   auto memory_unit_device =
-      std::make_unique<xe::vfs::HostPathDevice>("\\MU", "mu", false);
+      std::make_unique<xe::vfs::HostPathDevice>("\\MU0", "mu", false);
   if (!memory_unit_device->Initialize()) {
     XELOGE("Unable to scan memory unit path");
   } else {
@@ -560,7 +560,7 @@ void EmulatorApp::EmulatorThread() {
             std::move(memory_unit_device))) {
       XELOGE("Unable to register memory unit path");
     } else {
-      emulator_->file_system()->RegisterSymbolicLink("mu:", "\\MU");
+      emulator_->file_system()->RegisterSymbolicLink("mu:", "\\MU0");
     }
   }
 
