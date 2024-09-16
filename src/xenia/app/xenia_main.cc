@@ -556,7 +556,8 @@ void EmulatorApp::EmulatorThread() {
   if (!memory_unit_device->Initialize()) {
     XELOGE("Unable to scan memory unit path");
   } else {
-    if (!emulator_->file_system()->RegisterDevice(std::move(memory_unit_device))) {
+    if (!emulator_->file_system()->RegisterDevice(
+            std::move(memory_unit_device))) {
       XELOGE("Unable to register memory unit path");
     } else {
       emulator_->file_system()->RegisterSymbolicLink("mu:", "\\MU");
