@@ -1195,10 +1195,10 @@ X_STATUS Emulator::CompleteLaunch(const std::filesystem::path& path,
   // to make sure any HostPathDevices are ready beforehand. (see comment above
   // cache:\ device registration for more info about why)
   auto null_paths = {
-    std::string("\\Partition0"), 
-    std::string("\\Cache0"),
-    std::string("\\Cache1"),
-    std::string("\\MU"),
+      std::string("\\Partition0"), 
+      std::string("\\Cache0"),
+      std::string("\\Cache1"),
+      std::string("\\MU"),
   };
 
   auto null_device =
