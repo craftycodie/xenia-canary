@@ -610,6 +610,19 @@ void EmulatorApp::EmulatorThread() {
     }
   }
 
+  // Memory Unit
+  auto mu_device = std::make_unique<xe::vfs::HostPathDevice>(
+      "\\MU", emulator_->storage_root() / "mu", false);
+  if (!mu_device->Initialize()) {
+    XELOGE("Unable to scan cache path");
+  } else {
+    if (!fs->RegisterDevice(std::move(mu_device))) {
+      XELOGE("Unable to register MU path");
+    } else {
+      fs->RegisterSymbolicLink("MU:", "\\MU");
+    }
+  }
+  
   if (cvars::mount_cache) {
     auto cache0_device = std::make_unique<xe::vfs::HostPathDevice>(
         "\\CACHE0", emulator_->storage_root() / "cache0", false);
@@ -650,7 +663,7 @@ void EmulatorApp::EmulatorThread() {
         fs->RegisterSymbolicLink("cache:", "\\CACHE");
       }
     }
-
+    
     auto xstorage_device = std::make_unique<xe::vfs::HostPathDevice>(
         "\\XSTORAGE", "xstorage", false);
     if (!xstorage_device->Initialize()) {
