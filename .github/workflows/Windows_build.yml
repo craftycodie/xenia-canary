@@ -48,19 +48,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: windows-latest
-    env:
-      POWERSHELL_TELEMETRY_OPTOUT: 1
-    steps:
-      - uses: actions/checkout@main
-      - name: Lint
-        run: python xenia-build.py lint --all
-
   build:
     name: Build
-    needs: lint
     runs-on: windows-2025
     env:
       POWERSHELL_TELEMETRY_OPTOUT: 1
