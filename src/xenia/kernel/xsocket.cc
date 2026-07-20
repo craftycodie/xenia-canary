@@ -11,6 +11,7 @@
 
 #include <cstring>
 
+#include "xenia/base/logging.h"
 #include "xenia/base/platform.h"
 #include "xenia/kernel/kernel_state.h"
 #include "xenia/kernel/xam/xam_module.h"
@@ -257,6 +258,12 @@ X_STATUS XSocket::Connect(const XSOCKADDR_IN* name, int name_len) {
   }
 
   sockaddr addr = sa_in.to_host();
+  const auto* addr_in = reinterpret_cast<const sockaddr_in*>(&addr);
+  const uint8_t* ip =
+      reinterpret_cast<const uint8_t*>(&addr_in->sin_addr.s_addr);
+  XELOGI("XSocket::Connect native -> {}.{}.{}.{}:{} (mapped from guest port {})",
+         ip[0], ip[1], ip[2], ip[3], ntohs(addr_in->sin_port),
+         static_cast<uint16_t>(name->address_port));
 
   int ret = connect(native_handle_, &addr, name_len);
 
@@ -265,6 +272,15 @@ X_STATUS XSocket::Connect(const XSOCKADDR_IN* name, int name_len) {
   bound_ = true;
 
   if (ret < 0) {
+    const int err = WSAGetLastError();
+    SetLastWSAError(static_cast<X_WSAError>(err));
+    // Non-blocking connect in progress — guest must poll select/WSAEventSelect.
+    // Treating WOULDBLOCK as a hard failure breaks Demonware (bdLobbyConnection).
+    if (err == WSAEWOULDBLOCK || err == WSAEINPROGRESS) {
+      XELOGI("XSocket::Connect native pending (WSA {})", err);
+      return X_STATUS_UNSUCCESSFUL;  // NetDll_connect -> -1 + WOULDBLOCK
+    }
+    XELOGE("XSocket::Connect native failed: WSA {}", err);
     return X_STATUS_UNSUCCESSFUL;
   }
 

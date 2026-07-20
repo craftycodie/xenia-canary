@@ -60,6 +60,14 @@ typedef enum _MODE { KernelMode, UserMode, MaximumMode } MODE;
 dword_result_t XamFeatureEnabled_entry(dword_t app_id) { return 0; }
 DECLARE_XAM_EXPORT1(XamFeatureEnabled, kNone, kStub);
 
+// Titles (e.g. Destiny) assert that this returns success (0). Without an
+// implementation the undefined-extern trampoline returns a non-zero value,
+// tripping the guest-side assert during startup.
+dword_result_t XamBackgroundDownloadSetMode_entry(dword_t mode) {
+  return X_ERROR_SUCCESS;
+}
+DECLARE_XAM_EXPORT1(XamBackgroundDownloadSetMode, kNone, kStub);
+
 dword_result_t XamGetStagingMode_entry() { return cvars::staging_mode; }
 DECLARE_XAM_EXPORT1(XamGetStagingMode, kNone, kStub);
 

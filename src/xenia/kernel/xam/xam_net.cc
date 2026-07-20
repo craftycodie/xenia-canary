@@ -7,7 +7,12 @@
  ******************************************************************************
  */
 
+#include <algorithm>
+#include <cstdlib>
+#include <memory>
+#include <mutex>
 #include <random>
+#include <unordered_map>
 
 // clang-format off
 // We want to include platform.h first to define NOMINMAX to prevent window.h
@@ -17,6 +22,7 @@
 // clang-format on
 
 #include "xenia/base/logging.h"
+#include "xenia/cpu/processor.h"
 #include "xenia/kernel/XLiveAPI.h"
 #include "xenia/kernel/kernel_state.h"
 #include "xenia/kernel/util/net_utils.h"
@@ -44,6 +50,12 @@
 #endif
 
 DECLARE_bool(xhttp);
+
+DEFINE_bool(
+    xhttp_async_pump, false,
+    "Deliver XHTTP asynchronous completions by polling XHttpDoWork on the "
+    "title's thread instead of dispatching them from worker threads.",
+    "Live");
 
 DECLARE_bool(logging);
 
@@ -328,7 +340,7 @@ dword_result_t XamGetToken_entry(dword_t user_index, lpstring_t url_ptr,
     const uint32_t mock_token_len = static_cast<uint32_t>(mock_token.size());
 
     const uint32_t token_data_addrress =
-        kernel_memory()->SystemHeapAlloc(mock_token.size());
+        kernel_memory()->SystemHeapAlloc(mock_token_len);
 
     uint8_t* token_data =
         kernel_memory()->TranslateVirtual<uint8_t*>(token_data_addrress);
@@ -1576,6 +1588,492 @@ dword_result_t XampXAuthGetTitleBuffer_entry() {
 }
 DECLARE_XAM_EXPORT1(XampXAuthGetTitleBuffer, kNetworking, kStub);
 
+// ----------------------------------------------------------------------------
+// XHTTP
+//
+// XHTTP is the Xbox 360's HTTP client library (an ANSI-string port of desktop
+// WinHTTP) exported from xam. The API is handle based: a session handle
+// (XHttpOpen) owns connection handles (XHttpConnect) which own request handles
+// (XHttpOpenRequest). Requests are submitted with XHttpSendRequest, completed
+// with XHttpReceiveResponse and then queried with XHttpQueryHeaders /
+// XHttpReadData.
+//
+// The transaction itself is performed via libcurl. As requested, every
+// destination is currently redirected to a local server at 127.0.0.1:36000;
+// the intended host is preserved through the Host header so a local server can
+// route by original domain.
+//
+// Both synchronous and asynchronous (XHTTP_FLAG_ASYNC) modes are supported. In
+// asynchronous mode each call returns immediately and completion is delivered
+// through the guest status callback (XHttpSetStatusCallback) - SEND/RECEIVE/
+// READ/WRITE completions and REQUEST_ERROR. Network I/O always runs on a
+// short-lived guest-capable worker thread so it never blocks the calling guest
+// thread. Two callback-delivery strategies are available:
+//   - worker-thread delivery (default): the callback fires from the worker,
+//     mirroring desktop WinHTTP async.
+//   - XHttpDoWork pump (cvar xhttp_async_pump): completions are queued and the
+//     callbacks fire on the title's own thread when it calls XHttpDoWork,
+//     matching the console's cooperative model.
+// ----------------------------------------------------------------------------
+namespace {
+
+constexpr char kXHttpRedirectHost[] = "127.0.0.1";
+constexpr uint16_t kXHttpRedirectPort = 36000;
+
+// WinHTTP-style query info levels (low 16 bits) and flags (high bits).
+constexpr uint32_t XHTTP_QUERY_CONTENT_LENGTH = 5;
+constexpr uint32_t XHTTP_QUERY_VERSION = 18;
+constexpr uint32_t XHTTP_QUERY_STATUS_CODE = 19;
+constexpr uint32_t XHTTP_QUERY_STATUS_TEXT = 20;
+constexpr uint32_t XHTTP_QUERY_RAW_HEADERS = 21;
+constexpr uint32_t XHTTP_QUERY_RAW_HEADERS_CRLF = 22;
+// Xbox 360 XHTTP uses non-standard query constants (differing from desktop
+// WinHTTP's 19/5). Observed from Destiny's http handler:
+//   status code   -> info_level 0x2000FFFE (attribute 0xFFFE, number flag)
+//   content length -> info_level 0x20000009 (attribute 0x0009, number flag)
+constexpr uint32_t XHTTP_QUERY_STATUS_CODE_XBOX = 0xFFFE;
+constexpr uint32_t XHTTP_QUERY_CONTENT_LENGTH_XBOX = 9;
+
+constexpr uint32_t XHTTP_QUERY_ATTRIBUTE_MASK = 0x0000FFFF;
+constexpr uint32_t XHTTP_QUERY_FLAG_NUMBER = 0x20000000;
+
+// Passed to XHttpOpen to request asynchronous (callback-driven) operation.
+constexpr uint32_t XHTTP_FLAG_ASYNC = 0x10000000;
+
+// WinHTTP-style status callback notifications (dwInternetStatus).
+constexpr uint32_t XHTTP_CALLBACK_STATUS_HEADERS_AVAILABLE = 0x00020000;
+constexpr uint32_t XHTTP_CALLBACK_STATUS_DATA_AVAILABLE = 0x00040000;
+constexpr uint32_t XHTTP_CALLBACK_STATUS_READ_COMPLETE = 0x00080000;
+constexpr uint32_t XHTTP_CALLBACK_STATUS_WRITE_COMPLETE = 0x00100000;
+constexpr uint32_t XHTTP_CALLBACK_STATUS_REQUEST_ERROR = 0x00200000;
+constexpr uint32_t XHTTP_CALLBACK_STATUS_SENDREQUEST_COMPLETE = 0x00400000;
+
+// XHTTP_ASYNC_RESULT.dwResult - identifies the async API that failed.
+constexpr uint32_t XHTTP_API_RECEIVE_RESPONSE = 1;
+constexpr uint32_t XHTTP_API_READ_DATA = 3;
+constexpr uint32_t XHTTP_API_WRITE_DATA = 4;
+constexpr uint32_t XHTTP_API_SEND_REQUEST = 5;
+
+enum class XHttpHandleType { kSession, kConnection, kRequest };
+
+struct XHttpHandle {
+  XHttpHandleType type;
+
+  // Asynchronous mode (XHTTP_FLAG_ASYNC), inherited session -> connection ->
+  // request.
+  bool async = false;
+
+  // Session (XHttpOpen).
+  std::string user_agent;
+
+  // Connection (XHttpConnect).
+  uint32_t session_handle = 0;
+  std::string host;
+  uint16_t port = 0;
+
+  // Request (XHttpOpenRequest).
+  uint32_t connection_handle = 0;
+  std::string verb;
+  std::string path;
+  std::vector<std::string> request_headers;
+  std::string request_body;
+  uint32_t context = 0;  // dwContext passed to the status callback.
+
+  // Status callback (XHttpSetStatusCallback).
+  uint32_t status_callback = 0;
+
+  // Response state, populated once the transaction has run. `perform_mutex`
+  // serializes PerformXHttpRequest so a caller querying the response (possibly
+  // on a different thread) blocks until the transaction has fully completed
+  // rather than observing a half-populated (status_code == 0) state.
+  std::mutex perform_mutex;
+  bool performed = false;
+  bool succeeded = false;
+  uint64_t status_code = 0;
+  std::string status_text;
+  std::string response_headers;
+  std::string response_body;
+  size_t read_offset = 0;
+};
+
+class XHttpManager {
+ public:
+  uint32_t Create(XHttpHandleType type) {
+    auto handle_obj = std::make_shared<XHttpHandle>();
+    handle_obj->type = type;
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    const uint32_t handle = next_handle_++;
+    handles_.emplace(handle, std::move(handle_obj));
+    return handle;
+  }
+
+  std::shared_ptr<XHttpHandle> Lookup(uint32_t handle) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto it = handles_.find(handle);
+    return it == handles_.end() ? nullptr : it->second;
+  }
+
+  bool Close(uint32_t handle) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return handles_.erase(handle) > 0;
+  }
+
+ private:
+  std::mutex mutex_;
+  // Start well above small integers to avoid clashing with guest sentinels.
+  uint32_t next_handle_ = 0x50000000;
+  std::unordered_map<uint32_t, std::shared_ptr<XHttpHandle>> handles_;
+};
+
+XHttpManager xhttp_manager;
+
+// libcurl write/header sink that appends into a response_data buffer.
+// https://curl.se/libcurl/c/CURLOPT_WRITEFUNCTION.html
+size_t XHttpWriteCallback(void* data, size_t size, size_t nmemb,
+                          void* clientp) {
+  const size_t realsize = size * nmemb;
+  auto* mem = static_cast<response_data*>(clientp);
+
+  char* ptr =
+      static_cast<char*>(realloc(mem->response, mem->size + realsize + 1));
+  if (!ptr) {
+    return 0;
+  }
+
+  mem->response = ptr;
+  std::memcpy(&mem->response[mem->size], data, realsize);
+  mem->size += realsize;
+  mem->response[mem->size] = 0;
+
+  return realsize;
+}
+
+// Split a raw "Name: Value\r\n..." header blob into individual header lines.
+std::vector<std::string> SplitHeaderLines(const std::string& headers) {
+  std::vector<std::string> lines;
+  size_t start = 0;
+  while (start < headers.size()) {
+    size_t end = headers.find("\r\n", start);
+    if (end == std::string::npos) {
+      end = headers.size();
+    }
+    if (end > start) {
+      lines.emplace_back(headers.substr(start, end - start));
+    }
+    start = end + 2;
+  }
+  return lines;
+}
+
+// Look up a single header value (case-insensitive) from a raw CRLF blob.
+bool FindHeaderValue(const std::string& raw_headers, const std::string& name,
+                     std::string* out_value) {
+  for (const auto& line : SplitHeaderLines(raw_headers)) {
+    const size_t colon = line.find(':');
+    if (colon == std::string::npos) {
+      continue;
+    }
+    if (xe::utf8::equal_case(line.substr(0, colon).c_str(), name.c_str())) {
+      size_t value_start = colon + 1;
+      while (value_start < line.size() && line[value_start] == ' ') {
+        ++value_start;
+      }
+      *out_value = line.substr(value_start);
+      return true;
+    }
+  }
+  return false;
+}
+
+// Runs the HTTP transaction for a request handle exactly once. All hosts are
+// redirected to the local server; the original host is forwarded as the Host
+// header.
+void PerformXHttpRequest(const std::shared_ptr<XHttpHandle>& request) {
+  // Serialize so concurrent callers wait for the in-flight transaction to
+  // finish instead of returning early with an incomplete (status_code == 0)
+  // response. `performed` is only set once the work below has fully completed.
+  std::lock_guard<std::mutex> perform_lock(request->perform_mutex);
+  if (request->performed) {
+    return;
+  }
+
+  const auto connection = xhttp_manager.Lookup(request->connection_handle);
+  const std::string host = connection ? connection->host : std::string();
+  const uint16_t host_port = connection ? connection->port : 0;
+
+  std::string path = request->path;
+  if (path.empty() || path.front() != '/') {
+    path = "/" + path;
+  }
+
+  const std::string url = fmt::format("http://{}:{}{}", kXHttpRedirectHost,
+                                      kXHttpRedirectPort, path);
+
+  CURL* curl_handle = curl_easy_init();
+  if (!curl_handle) {
+    XELOGE("XHttp: Cannot initialize CURL");
+    XThread::SetLastError(XHTTP_ERROR_INTERNAL_ERROR);
+    return;
+  }
+
+  response_data body_chunk = {};
+  response_data header_chunk = {};
+
+  const std::string verb = request->verb.empty() ? "GET" : request->verb;
+
+  curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl_handle, CURLOPT_CUSTOMREQUEST, verb.c_str());
+  curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "xenia");
+
+  curl_slist* headers = nullptr;
+  if (!host.empty()) {
+    const std::string host_header =
+        host_port ? fmt::format("Host: {}:{}", host, host_port)
+                  : fmt::format("Host: {}", host);
+    headers = curl_slist_append(headers, host_header.c_str());
+  }
+  for (const auto& header : request->request_headers) {
+    headers = curl_slist_append(headers, header.c_str());
+  }
+  if (headers) {
+    curl_easy_setopt(curl_handle, CURLOPT_HTTPHEADER, headers);
+  }
+
+  if (!request->request_body.empty()) {
+    curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS,
+                     request->request_body.data());
+    curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDSIZE_LARGE,
+                     static_cast<curl_off_t>(request->request_body.size()));
+  }
+
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, XHttpWriteCallback);
+  curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, &body_chunk);
+  curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, XHttpWriteCallback);
+  curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, &header_chunk);
+
+  if (cvars::logging) {
+    XELOGI("XHttp: {} {} (host: {})", verb, url, host);
+  }
+
+  const CURLcode result = curl_easy_perform(curl_handle);
+  if (result == CURLE_OK) {
+    request->succeeded = true;
+    curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE,
+                      &request->status_code);
+    XELOGI("XHttp: {} {} -> status {} ({} body bytes)", verb, path,
+           request->status_code, body_chunk.response ? body_chunk.size : 0);
+
+    if (body_chunk.response) {
+      request->response_body.assign(body_chunk.response, body_chunk.size);
+    }
+    if (header_chunk.response) {
+      request->response_headers.assign(header_chunk.response,
+                                       header_chunk.size);
+    }
+
+    // Reason phrase is the remainder of the first status line after the code.
+    const size_t status_line_end = request->response_headers.find("\r\n");
+    const std::string status_line =
+        request->response_headers.substr(0, status_line_end);
+    const size_t code_pos = status_line.find(' ');
+    if (code_pos != std::string::npos) {
+      const size_t text_pos = status_line.find(' ', code_pos + 1);
+      if (text_pos != std::string::npos) {
+        request->status_text = status_line.substr(text_pos + 1);
+      }
+    }
+  } else {
+    XELOGE("XHttp: request failed, CURL error {}",
+           static_cast<uint32_t>(result));
+    XThread::SetLastError(XHTTP_ERROR_CONNECTION_ERROR);
+  }
+
+  if (body_chunk.response) {
+    free(body_chunk.response);
+  }
+  if (header_chunk.response) {
+    free(header_chunk.response);
+  }
+  if (headers) {
+    curl_slist_free_all(headers);
+  }
+  curl_easy_cleanup(curl_handle);
+
+  // Mark complete only now that status_code/body/headers are fully populated.
+  request->performed = true;
+}
+
+// Resolves the effective status callback for a request, walking request ->
+// connection -> session (WinHTTP inherits the callback down the handle chain).
+uint32_t ResolveStatusCallback(const std::shared_ptr<XHttpHandle>& request) {
+  if (request->status_callback) {
+    return request->status_callback;
+  }
+  const auto connection = xhttp_manager.Lookup(request->connection_handle);
+  if (connection) {
+    if (connection->status_callback) {
+      return connection->status_callback;
+    }
+    const auto session = xhttp_manager.Lookup(connection->session_handle);
+    if (session && session->status_callback) {
+      return session->status_callback;
+    }
+  }
+  return 0;
+}
+
+// Invokes a guest WinHTTP-style status callback:
+//   void callback(hInternet, dwContext, dwInternetStatus,
+//                 lpvStatusInformation, dwStatusInformationLength)
+// Must be called from a guest-capable thread (i.e. an XHTTP worker).
+void InvokeGuestCallback(uint32_t guest_callback, uint32_t handle,
+                         uint32_t context, uint32_t status, uint32_t info_ptr,
+                         uint32_t info_len) {
+  if (!guest_callback) {
+    return;
+  }
+
+  auto* thread = XThread::GetCurrentThread();
+  if (!thread) {
+    return;
+  }
+
+  uint64_t args[] = {handle, context, status, info_ptr, info_len};
+  kernel_state()->processor()->Execute(thread->thread_state(),
+                                       guest_callback & ~1u, args,
+                                       xe::countof(args));
+}
+
+// Runs `work` on a short-lived, guest-capable worker thread so that it may
+// perform blocking network I/O and then invoke guest status callbacks off the
+// calling (guest) thread. The worker owns itself until it returns.
+void RunXHttpWorker(std::function<void()> work) {
+  auto thread = object_ref<XThread>(new XHostThread(
+      kernel_state(), 128 * 1024, 0,
+      [work = std::move(work)]() -> int {
+        work();
+        return 0;
+      },
+      kernel_state()->GetSystemProcess()));
+  thread->set_name("XHTTP Async Worker");
+  thread->Create();
+}
+
+// A pending asynchronous notification to be delivered to a guest status
+// callback. Two delivery strategies consume these (selected by cvar):
+//   - worker threads (default): dispatched immediately off-thread.
+//   - XHttpDoWork pump: queued and drained on the title's thread.
+struct XHttpCompletion {
+  uint32_t handle = 0;    // hInternet (request handle)
+  uint32_t context = 0;   // dwContext
+  uint32_t callback = 0;  // guest status callback
+  uint32_t status = 0;    // XHTTP_CALLBACK_STATUS_*
+  uint32_t info_ptr = 0;  // lpvStatusInformation (guest ptr) or 0
+  uint32_t info_len = 0;  // dwStatusInformationLength
+
+  // When set, an XHTTP_ASYNC_RESULT {api, error} is allocated in guest memory
+  // for the duration of the callback (used for REQUEST_ERROR).
+  bool alloc_error = false;
+  uint32_t error_api = 0;
+  uint32_t error_code = 0;
+
+  // When set, a DWORD holding write_count is allocated for the callback
+  // (used for WRITE_COMPLETE).
+  bool alloc_write_count = false;
+  uint32_t write_count = 0;
+};
+
+std::mutex g_xhttp_pump_mutex;
+std::vector<XHttpCompletion> g_xhttp_pump_queue;
+
+// Invokes the guest callback for a completion, allocating/freeing any transient
+// guest status-information buffer. Must run on a guest-capable thread.
+void ExecuteCompletion(const XHttpCompletion& c) {
+  if (c.alloc_error) {
+    const uint32_t result_ptr =
+        kernel_state()->memory()->SystemHeapAlloc(2 * sizeof(uint32_t));
+    if (result_ptr) {
+      auto* async_result =
+          kernel_state()->memory()->TranslateVirtual<xe::be<uint32_t>*>(
+              result_ptr);
+      async_result[0] = c.error_api;
+      async_result[1] = c.error_code;
+    }
+    InvokeGuestCallback(c.callback, c.handle, c.context, c.status, result_ptr,
+                        2 * sizeof(uint32_t));
+    if (result_ptr) {
+      kernel_state()->memory()->SystemHeapFree(result_ptr);
+    }
+    return;
+  }
+
+  if (c.alloc_write_count) {
+    const uint32_t count_ptr =
+        kernel_state()->memory()->SystemHeapAlloc(sizeof(uint32_t));
+    if (count_ptr) {
+      *kernel_state()->memory()->TranslateVirtual<xe::be<uint32_t>*>(count_ptr) =
+          c.write_count;
+    }
+    InvokeGuestCallback(c.callback, c.handle, c.context, c.status, count_ptr,
+                        sizeof(uint32_t));
+    if (count_ptr) {
+      kernel_state()->memory()->SystemHeapFree(count_ptr);
+    }
+    return;
+  }
+
+  InvokeGuestCallback(c.callback, c.handle, c.context, c.status, c.info_ptr,
+                      c.info_len);
+}
+
+// Delivers a completion that requires no further network work: queued for the
+// XHttpDoWork pump, or dispatched on a worker thread.
+void DeliverCompletion(XHttpCompletion completion) {
+  if (cvars::xhttp_async_pump) {
+    std::lock_guard<std::mutex> lock(g_xhttp_pump_mutex);
+    g_xhttp_pump_queue.push_back(std::move(completion));
+    return;
+  }
+
+  RunXHttpWorker(
+      [completion = std::move(completion)]() { ExecuteCompletion(completion); });
+}
+
+// Runs the transaction on a worker (so the guest thread never blocks) and then
+// delivers HEADERS_AVAILABLE or REQUEST_ERROR - either straight away (worker
+// mode) or via the XHttpDoWork pump.
+void DeliverReceiveResponse(const std::shared_ptr<XHttpHandle>& request,
+                            uint32_t handle, uint32_t context,
+                            uint32_t callback) {
+  RunXHttpWorker([request, handle, context, callback]() {
+    PerformXHttpRequest(request);
+
+    XHttpCompletion completion = {};
+    completion.handle = handle;
+    completion.context = context;
+    completion.callback = callback;
+
+    if (request->succeeded) {
+      completion.status = XHTTP_CALLBACK_STATUS_HEADERS_AVAILABLE;
+    } else {
+      completion.status = XHTTP_CALLBACK_STATUS_REQUEST_ERROR;
+      completion.alloc_error = true;
+      completion.error_api = XHTTP_API_RECEIVE_RESPONSE;
+      completion.error_code = XHTTP_ERROR_CONNECTION_ERROR;
+    }
+
+    if (cvars::xhttp_async_pump) {
+      std::lock_guard<std::mutex> lock(g_xhttp_pump_mutex);
+      g_xhttp_pump_queue.push_back(std::move(completion));
+    } else {
+      ExecuteCompletion(completion);
+    }
+  });
+}
+
+}  // namespace
+
 dword_result_t NetDll_XHttpStartup_entry(dword_t caller, dword_t reserved,
                                          dword_t reserved_ptr) {
   // Console returns 1 even without network access
@@ -1593,6 +2091,38 @@ DECLARE_XAM_EXPORT1(NetDll_XHttpStartup, kNetworking, kStub);
 
 void NetDll_XHttpShutdown_entry(dword_t caller) {}
 DECLARE_XAM_EXPORT1(NetDll_XHttpShutdown, kNetworking, kStub);
+
+// XHttpOpen(caller, user_agent, access_type, proxy_name, proxy_bypass, flags)
+// Creates a session handle. Mirrors WinHttpOpen.
+dword_result_t NetDll_XHttpOpen_entry(dword_t caller, lpstring_t user_agent,
+                                      dword_t access_type,
+                                      lpstring_t proxy_name,
+                                      lpstring_t proxy_bypass, dword_t flags) {
+  const uint32_t handle = xhttp_manager.Create(XHttpHandleType::kSession);
+
+  auto session = xhttp_manager.Lookup(handle);
+  session->async = (flags & XHTTP_FLAG_ASYNC) != 0;
+  if (user_agent) {
+    session->user_agent = user_agent.value();
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return handle;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpOpen, kNetworking, kImplemented);
+
+// XHttpCloseHandle(caller, handle) - closes any session/connection/request
+// handle.
+dword_result_t NetDll_XHttpCloseHandle_entry(dword_t caller, dword_t handle) {
+  if (!xhttp_manager.Close(handle)) {
+    XThread::SetLastError(X_ERROR_INVALID_HANDLE);
+    return 0;
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpCloseHandle, kNetworking, kImplemented);
 
 dword_result_t NetDll_XHttpCrackUrl_entry(
     dword_t caller, lpstring_t url_ptr, dword_t url_length, dword_t flags,
@@ -1628,9 +2158,9 @@ dword_result_t NetDll_XHttpCrackUrl_entry(
     std::string decoded_component;
     int component_length = 0;
 
-    char* decoded_output =
-        curl_easy_unescape(curl, encoded_component.c_str(),
-                           decoded_component.size(), &component_length);
+    char* decoded_output = curl_easy_unescape(
+        curl, encoded_component.c_str(),
+        static_cast<int>(decoded_component.size()), &component_length);
 
     if (decoded_output) {
       decoded_component = std::string(decoded_output, component_length);
@@ -1694,7 +2224,7 @@ dword_result_t NetDll_XHttpCrackUrl_entry(
 
       xe::string_util::copy_truncating(result_dst_ptr, processed_data.c_str(),
                                        component_length_ptr);
-      component_length_ptr = processed_data.size();
+      component_length_ptr = static_cast<uint32_t>(processed_data.size());
     } else if (component_length_ptr) {
       component_ptr = component_result_ptr;
       component_length_ptr = size;
@@ -1874,65 +2404,404 @@ DECLARE_XAM_EXPORT1(NetDll_XHttpCrackUrl, kNetworking, kImplemented);
 
 dword_result_t NetDll_XHttpDoWork_entry(dword_t caller, dword_t handle,
                                         dword_t unk) {
-  XThread::SetLastError(X_ERROR_SUCCESS);
+  // Pump mode: drain queued async completions and invoke their guest callbacks
+  // on this (the title's) thread. A no-op in worker-thread delivery mode.
+  std::vector<XHttpCompletion> pending;
+  {
+    std::lock_guard<std::mutex> lock(g_xhttp_pump_mutex);
+    pending.swap(g_xhttp_pump_queue);
+  }
 
+  for (const auto& completion : pending) {
+    ExecuteCompletion(completion);
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
   return 0;
 }
-DECLARE_XAM_EXPORT1(NetDll_XHttpDoWork, kNetworking, kStub);
+DECLARE_XAM_EXPORT1(NetDll_XHttpDoWork, kNetworking, kImplemented);
+
+// XHttpSetOption / XHttpQueryOption. Options (timeouts, security flags,
+// context, etc.) do not apply to the local transport, so they are accepted and
+// ignored. Titles (e.g. Destiny) call XHttpSetOption during request setup;
+// without an implementation the undefined-extern trampoline is hit. Return
+// success (TRUE) so callers that check the result stay on the happy path.
+dword_result_t NetDll_XHttpSetOption_entry(dword_t caller, dword_t handle,
+                                           dword_t option, lpvoid_t buffer,
+                                           dword_t buffer_length) {
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpSetOption, kNetworking, kStub);
+
+dword_result_t NetDll_XHttpQueryOption_entry(dword_t caller, dword_t handle,
+                                             dword_t option, lpvoid_t buffer,
+                                             lpdword_t buffer_length) {
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpQueryOption, kNetworking, kStub);
 
 dword_result_t NetDll_XHttpOpenRequest_entry(
     dword_t caller, dword_t connect_handle, lpstring_t verb, lpstring_t path,
     lpstring_t version, lpstring_t referrer, lpstring_t reserved,
     dword_t flag) {
-  std::string http_verb = "";
-  std::string object_name = "";
-
-  if (verb) {
-    http_verb = *verb;
+  auto connection = xhttp_manager.Lookup(connect_handle);
+  if (!connection || connection->type != XHttpHandleType::kConnection) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
   }
 
-  if (path) {
-    object_name = *path;
-  }
+  const uint32_t handle = xhttp_manager.Create(XHttpHandleType::kRequest);
 
-  XELOGI("OpenRequest: {} {}", http_verb, object_name);
+  auto request = xhttp_manager.Lookup(handle);
+  request->async = connection->async;
+  request->connection_handle = connect_handle;
+  request->verb = verb ? verb.value() : "GET";
+  request->path = path ? path.value() : "/";
 
-  // Return invalid handle (not NULL)
-  return 1;
+  XELOGI("XHttp OpenRequest: {} {}", request->verb, request->path);
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return handle;
 }
-DECLARE_XAM_EXPORT1(NetDll_XHttpOpenRequest, kNetworking, kStub);
+DECLARE_XAM_EXPORT1(NetDll_XHttpOpenRequest, kNetworking, kImplemented);
 
 dword_result_t NetDll_XHttpSetStatusCallback_entry(dword_t caller,
                                                    dword_t handle,
                                                    lpdword_t callback_ptr,
                                                    dword_t flags, dword_t unk) {
-  return 1;
-}
-DECLARE_XAM_EXPORT1(NetDll_XHttpSetStatusCallback, kNetworking, kStub);
-
-dword_result_t NetDll_XHttpSendRequest_entry(dword_t caller, dword_t hrequest,
-                                             lpstring_t headers,
-                                             dword_t hlength, lpvoid_t unkn1,
-                                             dword_t unkn2, dword_t unk3,
-                                             dword_t unk4) {
-  std::string request_headers = "";
-
-  if (headers) {
-    request_headers = *headers;
+  auto handle_obj = xhttp_manager.Lookup(handle);
+  if (!handle_obj) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return -1;
   }
 
-  XELOGI("Headers {}", request_headers);
-  return false;
+  const uint32_t previous_callback = handle_obj->status_callback;
+  handle_obj->status_callback =
+      callback_ptr ? static_cast<uint32_t>(callback_ptr.guest_address()) : 0;
+
+  // Return the previously installed callback (0 = none).
+  return previous_callback;
 }
-DECLARE_XAM_EXPORT1(NetDll_XHttpSendRequest, kNetworking, kStub);
+DECLARE_XAM_EXPORT1(NetDll_XHttpSetStatusCallback, kNetworking, kImplemented);
+
+// XHttpSendRequest(caller, request, headers, headers_length, optional,
+//                  optional_length, total_length, context)
+dword_result_t NetDll_XHttpSendRequest_entry(dword_t caller, dword_t hrequest,
+                                             lpstring_t headers,
+                                             dword_t hlength, lpvoid_t optional,
+                                             dword_t optional_length,
+                                             dword_t total_length,
+                                             dword_t context) {
+  auto request = xhttp_manager.Lookup(hrequest);
+  if (!request || request->type != XHttpHandleType::kRequest) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  if (headers) {
+    std::string request_headers = headers.value();
+    if (hlength != static_cast<uint32_t>(-1) &&
+        hlength < request_headers.size()) {
+      request_headers = request_headers.substr(0, hlength);
+    }
+
+    for (auto& header : SplitHeaderLines(request_headers)) {
+      request->request_headers.emplace_back(std::move(header));
+    }
+  }
+
+  // Any body bytes supplied inline are appended; further bytes may follow via
+  // XHttpWriteData before XHttpReceiveResponse runs the transaction.
+  if (optional && optional_length) {
+    const char* optional_data = optional.as<const char*>();
+    request->request_body.append(optional_data,
+                                 static_cast<size_t>(optional_length));
+  }
+
+  request->context = context;
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+
+  // In asynchronous mode the call returns immediately and completion is
+  // signalled via the status callback.
+  if (request->async) {
+    XHttpCompletion completion = {};
+    completion.handle = hrequest;
+    completion.context = context;
+    completion.callback = ResolveStatusCallback(request);
+    completion.status = XHTTP_CALLBACK_STATUS_SENDREQUEST_COMPLETE;
+    DeliverCompletion(std::move(completion));
+  }
+
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpSendRequest, kNetworking, kImplemented);
+
+// XHttpWriteData(caller, request, buffer, bytes_to_write, bytes_written)
+// Streams request body bytes prior to XHttpReceiveResponse.
+dword_result_t NetDll_XHttpWriteData_entry(dword_t caller, dword_t hrequest,
+                                           lpvoid_t buffer,
+                                           dword_t bytes_to_write,
+                                           lpdword_t bytes_written_ptr) {
+  auto request = xhttp_manager.Lookup(hrequest);
+  if (!request || request->type != XHttpHandleType::kRequest) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  if (buffer && bytes_to_write) {
+    const char* data = buffer.as<const char*>();
+    request->request_body.append(data, static_cast<size_t>(bytes_to_write));
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+
+  // Asynchronous mode: report bytes written via WRITE_COMPLETE. The status
+  // information is a pointer to a DWORD holding the count.
+  if (request->async) {
+    XHttpCompletion completion = {};
+    completion.handle = hrequest;
+    completion.context = request->context;
+    completion.callback = ResolveStatusCallback(request);
+    completion.status = XHTTP_CALLBACK_STATUS_WRITE_COMPLETE;
+    completion.alloc_write_count = true;
+    completion.write_count = bytes_to_write.value();
+    DeliverCompletion(std::move(completion));
+
+    return 1;
+  }
+
+  if (bytes_written_ptr) {
+    xe::be<uint32_t>* written = bytes_written_ptr;
+    *written = static_cast<uint32_t>(bytes_to_write);
+  }
+
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpWriteData, kNetworking, kImplemented);
+
+// XHttpReceiveResponse(caller, request, reserved) - runs the transaction and
+// makes the response available for querying/reading.
+dword_result_t NetDll_XHttpReceiveResponse_entry(dword_t caller,
+                                                 dword_t hrequest,
+                                                 dword_t reserved) {
+  auto request = xhttp_manager.Lookup(hrequest);
+  if (!request || request->type != XHttpHandleType::kRequest) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  XELOGI("XHttp ReceiveResponse: handle={:08X} async={}", hrequest.value(),
+         request->async);
+
+  // Asynchronous mode: run the transaction off-thread and report the outcome
+  // via HEADERS_AVAILABLE (success) or REQUEST_ERROR (failure).
+  if (request->async) {
+    DeliverReceiveResponse(request, hrequest.value(), request->context,
+                           ResolveStatusCallback(request));
+    XThread::SetLastError(X_ERROR_SUCCESS);
+    return 1;
+  }
+
+  PerformXHttpRequest(request);
+
+  if (!request->succeeded) {
+    return 0;
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpReceiveResponse, kNetworking, kImplemented);
+
+// XHttpQueryHeaders(caller, request, info_level, name, buffer, buffer_length,
+//                   index)
+dword_result_t NetDll_XHttpQueryHeaders_entry(
+    dword_t caller, dword_t hrequest, dword_t info_level, lpstring_t name,
+    lpvoid_t buffer, lpdword_t buffer_length_ptr, lpdword_t index_ptr) {
+  auto request = xhttp_manager.Lookup(hrequest);
+  if (!request || request->type != XHttpHandleType::kRequest) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  // Ensure the transaction has completed so response data is available.
+  PerformXHttpRequest(request);
+
+  const uint32_t attribute = info_level & XHTTP_QUERY_ATTRIBUTE_MASK;
+  const bool want_number = (info_level & XHTTP_QUERY_FLAG_NUMBER) != 0;
+
+  XELOGI(
+      "XHttp QueryHeaders: info_level={:08X} attribute={} number={} "
+      "status_code={}",
+      static_cast<uint32_t>(info_level), attribute, want_number,
+      request->status_code);
+
+  if (!buffer_length_ptr) {
+    XThread::SetLastError(X_ERROR_INVALID_PARAMETER);
+    return 0;
+  }
+  xe::be<uint32_t>* length_out = buffer_length_ptr;
+  const uint32_t buffer_size = buffer_length_ptr.value();
+
+  if (want_number) {
+    uint32_t value = 0;
+    switch (attribute) {
+      case XHTTP_QUERY_STATUS_CODE:
+      case XHTTP_QUERY_STATUS_CODE_XBOX:
+        value = static_cast<uint32_t>(request->status_code);
+        break;
+      case XHTTP_QUERY_CONTENT_LENGTH:
+      case XHTTP_QUERY_CONTENT_LENGTH_XBOX:
+        value = static_cast<uint32_t>(request->response_body.size());
+        break;
+      default:
+        XThread::SetLastError(XHTTP_ERROR_HEADER_NOT_FOUND);
+        return 0;
+    }
+
+    if (!buffer || buffer_size < sizeof(uint32_t)) {
+      *length_out = sizeof(uint32_t);
+      XThread::SetLastError(X_ERROR_INSUFFICIENT_BUFFER);
+      return 0;
+    }
+
+    xe::be<uint32_t>* value_out = buffer.as<xe::be<uint32_t>*>();
+    *value_out = value;
+    *length_out = sizeof(uint32_t);
+
+    XThread::SetLastError(X_ERROR_SUCCESS);
+    return 1;
+  }
+
+  std::string result;
+  switch (attribute) {
+    case XHTTP_QUERY_STATUS_CODE:
+    case XHTTP_QUERY_STATUS_CODE_XBOX:
+      result = std::to_string(request->status_code);
+      break;
+    case XHTTP_QUERY_STATUS_TEXT:
+      result = request->status_text;
+      break;
+    case XHTTP_QUERY_CONTENT_LENGTH:
+    case XHTTP_QUERY_CONTENT_LENGTH_XBOX:
+      result = std::to_string(request->response_body.size());
+      break;
+    case XHTTP_QUERY_VERSION:
+      result = "HTTP/1.1";
+      break;
+    case XHTTP_QUERY_RAW_HEADERS:
+    case XHTTP_QUERY_RAW_HEADERS_CRLF:
+      result = request->response_headers;
+      break;
+    default: {
+      // Fall back to looking a header up by name.
+      if (!name) {
+        XThread::SetLastError(XHTTP_ERROR_HEADER_NOT_FOUND);
+        return 0;
+      }
+      if (!FindHeaderValue(request->response_headers, name.value(), &result)) {
+        XThread::SetLastError(XHTTP_ERROR_HEADER_NOT_FOUND);
+        return 0;
+      }
+    } break;
+  }
+
+  // WinHTTP reports the required byte count (excluding null) on failure and the
+  // written length (excluding null) on success.
+  const uint32_t required = static_cast<uint32_t>(result.size()) + 1;
+  if (!buffer || buffer_size < required) {
+    *length_out = static_cast<uint32_t>(result.size());
+    XThread::SetLastError(X_ERROR_INSUFFICIENT_BUFFER);
+    return 0;
+  }
+
+  char* buffer_out = buffer.as<char*>();
+  std::memcpy(buffer_out, result.data(), result.size());
+  buffer_out[result.size()] = '\0';
+  *length_out = static_cast<uint32_t>(result.size());
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpQueryHeaders, kNetworking, kImplemented);
+
+// XHttpReadData(caller, request, buffer, bytes_to_read, bytes_read)
+dword_result_t NetDll_XHttpReadData_entry(dword_t caller, dword_t hrequest,
+                                          lpvoid_t buffer,
+                                          dword_t bytes_to_read,
+                                          lpdword_t bytes_read_ptr) {
+  auto request = xhttp_manager.Lookup(hrequest);
+  if (!request || request->type != XHttpHandleType::kRequest) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  PerformXHttpRequest(request);
+
+  const size_t remaining = request->response_body.size() - request->read_offset;
+  const size_t to_copy =
+      std::min<size_t>(remaining, static_cast<size_t>(bytes_to_read));
+
+  if (to_copy && buffer) {
+    char* buffer_out = buffer.as<char*>();
+    std::memcpy(buffer_out,
+                request->response_body.data() + request->read_offset, to_copy);
+    request->read_offset += to_copy;
+  }
+
+  // Asynchronous mode: report the (already copied) byte count via READ_COMPLETE.
+  // lpvStatusInformation points at the caller's buffer, length is bytes read.
+  if (request->async) {
+    XHttpCompletion completion = {};
+    completion.handle = hrequest;
+    completion.context = request->context;
+    completion.callback = ResolveStatusCallback(request);
+    completion.status = XHTTP_CALLBACK_STATUS_READ_COMPLETE;
+    completion.info_ptr = buffer.guest_address();
+    completion.info_len = static_cast<uint32_t>(to_copy);
+    DeliverCompletion(std::move(completion));
+
+    XThread::SetLastError(X_ERROR_SUCCESS);
+    return 1;
+  }
+
+  if (bytes_read_ptr) {
+    xe::be<uint32_t>* read_out = bytes_read_ptr;
+    *read_out = static_cast<uint32_t>(to_copy);
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return 1;
+}
+DECLARE_XAM_EXPORT1(NetDll_XHttpReadData, kNetworking, kImplemented);
 
 dword_result_t NetDll_XHttpConnect_entry(dword_t caller, dword_t hSession,
                                          lpstring_t host, dword_t port,
                                          dword_t flags) {
-  // XThread::SetLastError(XHTTP_ERROR_CONNECTION_ERROR);
-  return 0;
+  auto session = xhttp_manager.Lookup(hSession);
+  if (!session || session->type != XHttpHandleType::kSession) {
+    XThread::SetLastError(XHTTP_ERROR_INCORRECT_HANDLE_TYPE);
+    return 0;
+  }
+
+  const uint32_t handle = xhttp_manager.Create(XHttpHandleType::kConnection);
+
+  auto connection = xhttp_manager.Lookup(handle);
+  connection->async = session->async;
+  connection->session_handle = hSession;
+  connection->host = host ? host.value() : "";
+  connection->port = static_cast<uint16_t>(port);
+
+  if (cvars::logging) {
+    XELOGI("XHttp Connect: {}:{} (redirected to {}:{})", connection->host,
+           connection->port, kXHttpRedirectHost, kXHttpRedirectPort);
+  }
+
+  XThread::SetLastError(X_ERROR_SUCCESS);
+  return handle;
 }
-DECLARE_XAM_EXPORT1(NetDll_XHttpConnect, kNetworking, kStub);
+DECLARE_XAM_EXPORT1(NetDll_XHttpConnect, kNetworking, kImplemented);
 
 dword_result_t NetDll_inet_addr_entry(lpstring_t addr_ptr) {
   if (!addr_ptr) {
@@ -2153,12 +3022,30 @@ dword_result_t NetDll_connect_entry(dword_t caller, dword_t socket_handle,
     return -1;
   }
 
+  // Temporary diagnostics for Destiny DW lobby connect failures
+  // (bdLobbyConnection socket error -1). Shows guest target before native
+  // connect(); IP octets printed without masking so we can see loopback vs
+  // virtual xnaddr.
+  if (name) {
+    const uint32_t ip_n = name->address_ip.s_addr;  // network order
+    const uint8_t* ip = reinterpret_cast<const uint8_t*>(&ip_n);
+    XELOGI(
+        "NetDll_connect: sock={:08X} -> {}.{}.{}.{}:{} (family={})",
+        socket_handle.value(), ip[0], ip[1], ip[2], ip[3],
+        static_cast<uint16_t>(name->address_port),
+        static_cast<uint16_t>(name->address_family));
+  }
+
   X_STATUS status = socket->Connect(name, namelen);
   if (XFAILED(status)) {
-    XThread::SetLastError(socket->GetLastWSAError());
+    const uint32_t wsa = socket->GetLastWSAError();
+    XELOGE("NetDll_connect: FAILED status={:08X} wsa={:08X} ({})",
+           static_cast<uint32_t>(status), wsa, wsa);
+    XThread::SetLastError(wsa);
     return -1;
   }
 
+  XELOGI("NetDll_connect: ok sock={:08X}", socket_handle.value());
   return 0;
 }
 DECLARE_XAM_EXPORT1(NetDll_connect, kNetworking, kImplemented);
