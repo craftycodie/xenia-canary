@@ -39,6 +39,10 @@
 
 namespace xe {
 namespace kernel {
+
+struct XNetMuxPacket;
+void XNetDeliverUdpMux(const XNetMuxPacket& packet);
+
 // https://learn.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
 enum class X_WSA_ERROR : uint32_t {
   X_WSA_NO_ERROR = 0,
@@ -249,6 +253,11 @@ class XSocket : public XObject {
   bool QueuePacket(uint32_t src_ip, uint16_t src_port, const uint8_t* buf,
                    size_t len);
 
+  bool HasQueuedPackets() const {
+    std::lock_guard lock(incoming_packet_mutex_);
+    return !incoming_packets_.empty();
+  }
+
   std::mutex send_socket_mutex_;
   std::mutex receive_socket_mutex_;
 
@@ -273,7 +282,7 @@ class XSocket : public XObject {
   bool broadcast_socket_ = false;
 
   std::unique_ptr<xe::threading::Event> event_;
-  std::mutex incoming_packet_mutex_;
+  mutable std::mutex incoming_packet_mutex_;
   std::queue<uint8_t*> incoming_packets_;
 
   std::map<XWSAOVERLAPPED*, std::future<int32_t>> send_polling_tasks_;
